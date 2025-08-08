@@ -97,11 +97,15 @@ app.post('/api/pedidos/:codigo/estado', async (req, res) => {
   // Mensajes simulados de WhatsApp por estado
   let msg = null;
   if (estadoAnterior === 'pendiente' && nuevoEstado === 'en preparacion') {
-    msg = `📢 Pedido ${pedido.codigo}: ¡Ha sido aceptado y está en preparación!`;
+      msg = `📋 *Pedido ${pedido.codigo}\n* ¡Ya estamos en marcha! Preparamos tu pedido con el espíritu Soru: fresco, creativo y a tu gusto. Disfruta pronto de algo elaborado especialmente para ti坠 �🍣`;
+    }
+    else if (estadoAnterior === 'en preparacion' && nuevoEstado === 'listo') {
+      msg = `✅*Pedido esperando al repartidor*\n Tu pedido ya fue preparado con nuestro toque único de Soru, en un momento más llegará nuestro repartidor, sigue atento!!\n\n Agradecemos tu paciencia y preferencia`;
+    }
+    else if (estadoAnterior === 'listo' && nuevoEstado === 'liberado'){
+      msg = `🛵 *Tu pedido va en camino*\nNuestro repartidor ya va rumbo a ti con tu platillo recién preparado 🥢🍜\n¡Gracias por elegir Soru! En unos minutos estarás disfrutando de tu comida como se debe ✨`
   }
-  if (estadoAnterior === 'en preparacion' && nuevoEstado === 'listo') {
-    msg = `✅ Pedido ${pedido.codigo}: ¡Tu pedido está listo ${DELIVER_REST}!`;
-  }
+
 
   // Enviar webhook si corresponde
   if (msg) {
@@ -226,14 +230,15 @@ app.post('/api/cancelarPedido', async (req, res) => {
   }
 
   try {
-    await fetch(WEBHOOK_URL, {
+    await fetch(API_URL, {
       method: 'POST',
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         codigoPedido,
         motivo,
         timestamp: new Date().toISOString(),
-        mensaje: `❌ Pedido ${codigoPedido}: Tu pedido ha sido cancelado. Motivo: ${motivo}`
+        number: pedido.numero,
+        message: `⚠️ *Pedido ${codigoPedido}*\n Sentimos mucho que tu pedido no pueda llegar esta vez`
       })
     });
 
