@@ -2054,11 +2054,13 @@ function cargarCorteSucursal(sucursal) {
       // Backend responde: { efectivo, tarjeta, total }
       document.getElementById('ventaEfectivo').textContent = "$" + (data.efectivo ?? "undefined");
       document.getElementById('ventaTerminal').textContent = "$" + (data.tarjeta ?? "undefined");
+      document.getElementById('ventaSucursal').textContent = "$" + (data.ventaSucursal ?? "undefined");
       document.getElementById('ventaTotal').textContent = "$" + (data.total ?? "undefined");
     })
     .catch(() => {
       document.getElementById('ventaEfectivo').textContent = "$undefined";
       document.getElementById('ventaTerminal').textContent = "$undefined";
+      document.getElementById('ventaSucursal').textContent = "$" + (data.ventaSucursal ?? "undefined");
       document.getElementById('ventaTotal').textContent = "$undefined";
     });
 }
