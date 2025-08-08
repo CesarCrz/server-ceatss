@@ -409,14 +409,18 @@ app.post('/api/enviarCorte', async (req, res) => {
     const pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
     const pedidosDelDia = pedidos.filter(esMismoDia);
 
-    let efectivo = 0, tarjeta = 0;
+    let efectivo = 0, tarjeta = 0, ventaSucursal = 0;
     pedidosDelDia.forEach(p => {
       const pago = (p.pago || p.payMethod || '').toLowerCase();
       const totalPedido = parseFloat(p.total) || 0;
+
       if (pago === 'efectivo') efectivo += totalPedido;
       else if (pago === 'tarjeta') tarjeta += totalPedido;
+      else {
+        ventaSucursal += totalPedido;
+      }
     });
-    const total = efectivo + tarjeta;
+    const total = efectivo + tarjeta + ventaSucursal;
 
     // 3. Genera el PDF y envía por correo
     let buffers = [];
