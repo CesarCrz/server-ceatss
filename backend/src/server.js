@@ -309,72 +309,51 @@ app.get('/api/corte', async (req, res) => {
     return res.status(400).json({ error: 'Falta el parámetro de sucursal' });
   }
 
-  // Helper para convertir a hora de México
   function getMexicoDate(dateObj) {
-    // Esto convierte la fecha a la hora de México sin importar desde dónde corre el servidor.
     return new Date(dateObj.toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
   }
 
   try {
-    // URL de Apps Script
     const url = `https://script.google.com/macros/s/AKfycbzhwNTB1cK11Y3Wm7uiuVrzNmu1HD1IlDTPlAJ37oUDgPIabCWbZqMZr-86mnUDK_JPBA/exec?action=getPedidos&sucursal=${encodeURIComponent(sucursal)}&estados=liberado`;
     const response = await fetch(url);
     const data = await response.json();
     const pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
 
-    console.log('\n=== [CORTE DE CAJA DEBUG] ===');
     const ahora = getMexicoDate(new Date());
-    console.log('Fecha/hora actual servidor (MX):', ahora.toISOString());
-    console.log('Sucursal recibida:', sucursal);
-    console.log('Pedidos recibidos:', pedidos.length);
-
-    pedidos.forEach((p, i) => {
-      const fecha = p.fecha || p.Fecha || p.date || p.Date;
-      console.log(`[Pedido ${i}] Fecha cruda:`, fecha, '| Estado:', p.estado, '| Pago:', p.pago || p.payMethod, '| Total:', p.total);
-    });
 
     function esMismoDia(pedido) {
       const fecha = pedido.fecha || pedido.Fecha || pedido.date || pedido.Date;
-      if (!fecha) {
-        console.log('> Pedido sin fecha:', pedido);
-        return false;
-      }
+      if (!fecha) return false;
       let pedidoDateObj = new Date(fecha);
-      if (isNaN(pedidoDateObj)) {
-        console.log('> Fecha inválida:', fecha, '| Pedido:', pedido);
-        return false;
-      }
+      if (isNaN(pedidoDateObj)) return false;
       const pedidoLocal = getMexicoDate(pedidoDateObj);
-
-      const mismoDia = (
+      return (
         pedidoLocal.getFullYear() === ahora.getFullYear() &&
         pedidoLocal.getMonth() === ahora.getMonth() &&
         pedidoLocal.getDate() === ahora.getDate()
       );
-      console.log('> Comparando local MX:', pedidoLocal.toISOString().substring(0, 10), '<->', ahora.toISOString().substring(0, 10), '=>', mismoDia);
-      return mismoDia;
     }
 
     const pedidosDelDia = pedidos.filter(esMismoDia);
 
-    console.log('Pedidos del día:', pedidosDelDia.length);
-
-    let efectivo = 0, tarjeta = 0;
+    let efectivo = 0, tarjeta = 0, otros = 0;
     pedidosDelDia.forEach(p => {
-      const pago = (p.pago || p.payMethod || '').toLowerCase();
+      const pago = (p.pago || p.payMethod || p.metodoPago || '').toLowerCase();
       const totalPedido = parseFloat(p.total) || 0;
-      console.log('  > Pago:', pago, '| Total:', totalPedido);
       if (pago === 'efectivo') efectivo += totalPedido;
       else if (pago === 'tarjeta') tarjeta += totalPedido;
+      else {
+        otros += totalPedido;
+        console.warn('Pedido sin método de pago (sumado a "otros"):', p);
+      }
     });
 
-    const total = efectivo + tarjeta;
-    console.log('Resumen corte -> Efectivo:', efectivo, 'Tarjeta:', tarjeta, 'Total:', total);
-    console.log('=============================\n');
+    const total = efectivo + tarjeta + otros;
 
     res.json({
       efectivo: efectivo.toFixed(2),
       tarjeta: tarjeta.toFixed(2),
+      otros: otros.toFixed(2),
       total: total.toFixed(2)
     });
   } catch (err) {
