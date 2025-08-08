@@ -379,11 +379,14 @@ app.post('/api/enviarCorte', async (req, res) => {
     const ahoraMX = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' });
     const fechaMX = new Date().toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City' });
 
-    // 1. Pide los pedidos liberados a tu Apps Script
-    const corteResp = await fetch('https://script.google.com/macros/s/AKfycbzhwNTB1cK11Y3Wm7uiuVrzNmu1HD1IlDTPlAJ37oUDgPIabCWbZqMZr-86mnUDK_JPBA/exec?action=getPedidos&sucursal=' + encodeURIComponent(sucursal) + '&estados=liberado');
+    // 1. Pide los pedidos liberados y cancelados a tu Apps Script
+    const corteResp = await fetch(
+      'https://script.google.com/macros/s/AKfycbzhwNTB1cK11Y3Wm7uiuVrzNmu1HD1IlDTPlAJ37oUDgPIabCWbZqMZr-86mnUDK_JPBA/exec?action=getPedidos&sucursal=' +
+      encodeURIComponent(sucursal) + '&estados=liberado,cancelado'
+    );
     const data = await corteResp.json();
 
-    // 2. Calcula el corte solo para el día de hoy
+    // 2. Filtra por fecha de hoy (hora de México)
     function esMismoDia(pedido) {
       const fecha = pedido.fecha || pedido.Fecha || pedido.date || pedido.Date;
       if (!fecha) return false;
@@ -399,21 +402,33 @@ app.post('/api/enviarCorte', async (req, res) => {
         return false;
       }
       if (isNaN(pedidoDateObj)) return false;
-      const ahora = new Date();
+      // Fecha actual en MX
+      const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
       return (
         pedidoDateObj.getFullYear() === ahora.getFullYear() &&
         pedidoDateObj.getMonth() === ahora.getMonth() &&
         pedidoDateObj.getDate() === ahora.getDate()
       );
     }
+
     const pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
     const pedidosDelDia = pedidos.filter(esMismoDia);
 
-    let efectivo = 0, tarjeta = 0, ventaSucursal = 0;
-    pedidosDelDia.forEach(p => {
-      const pago = (p.pago || p.payMethod || '').toLowerCase();
-      const totalPedido = parseFloat(p.total) || 0;
+    // 3. Estadísticas igual que en el dashboard
+    const eliminados = pedidosDelDia.filter(p => (p.estado || p.Estado || '').toLowerCase() === 'cancelado');
+    const liberados = pedidosDelDia.filter(p => (p.estado || p.Estado || '').toLowerCase() === 'liberado');
+    const tiempos = liberados
+      .map(p => parseInt(p.tiempo || p.Tiempo))
+      .filter(t => !isNaN(t));
+    const promedioTiempo = tiempos.length > 0
+      ? Math.round(tiempos.reduce((a, b) => a + b, 0) / tiempos.length)
+      : 0;
 
+    // 4. Suma de ventas
+    let efectivo = 0, tarjeta = 0, ventaSucursal = 0;
+    liberados.forEach(p => {
+      const pago = (p.pago || p.payMethod || p.metodoPago || '').toLowerCase();
+      const totalPedido = parseFloat(p.total) || 0;
       if (pago === 'efectivo') efectivo += totalPedido;
       else if (pago === 'tarjeta') tarjeta += totalPedido;
       else {
@@ -422,7 +437,7 @@ app.post('/api/enviarCorte', async (req, res) => {
     });
     const total = efectivo + tarjeta + ventaSucursal;
 
-    // 3. Genera el PDF y envía por correo
+    // 5. Genera el PDF y envía por correo
     let buffers = [];
     const doc = new PDFDocument();
     doc.on('data', buffers.push.bind(buffers));
@@ -453,14 +468,26 @@ app.post('/api/enviarCorte', async (req, res) => {
       res.json({ enviado: true });
     });
 
-    doc.fontSize(20).text(`Corte de caja - ${sucursal}`, {align: 'center'});
+    // ------ PDF Layout ------
+    doc.fontSize(22).text(`Sushi Soru`, {align: 'center'});
+    doc.fontSize(16).text(`Sucursal: ${sucursal}`, {align: 'center'});
+    doc.moveDown(0.2);
+    doc.fontSize(13).text(`Fecha: ${ahoraMX}`, {align: 'center'});
     doc.moveDown();
-    doc.fontSize(14).text(`Fecha: ${ahoraMX}`);
     doc.moveDown();
-    doc.text(`Ventas en efectivo: $${efectivo.toFixed(2)}`);
-    doc.text(`Ventas con tarjeta: $${tarjeta.toFixed(2)}`);
-    doc.text(`Venta en sucursal $${ventaSucursal.toFixed(2)}`);
-    doc.text(`Total de ventas: $${total.toFixed(2)}`);
+
+    doc.fontSize(15).text('--- Reporte de Ventas ---', {align: 'left'});
+    doc.moveDown(0.5);
+
+    doc.fontSize(12).text(`Pedidos eliminados: ${eliminados.length}`);
+    doc.fontSize(12).text(`Pedidos liberados: ${liberados.length}`);
+    doc.fontSize(12).text(`Tiempo promedio: ${promedioTiempo} min`);
+    doc.moveDown();
+
+    doc.fontSize(13).text(`Ventas en efectivo: $${efectivo.toFixed(2)}`);
+    doc.fontSize(13).text(`Ventas con tarjeta: $${tarjeta.toFixed(2)}`);
+    doc.fontSize(13).text(`Venta en sucursal: $${ventaSucursal.toFixed(2)}`);
+    doc.fontSize(14).text(`Total de ventas: $${total.toFixed(2)}`);
     doc.end();
   } catch (err) {
     console.error("Error al enviar el corte:", err);
