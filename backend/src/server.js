@@ -310,47 +310,71 @@ app.get('/api/corte', async (req, res) => {
   }
 
   try {
-    // Cambia la URL a la de tu Apps Script
+    // URL de Apps Script
     const url = `https://script.google.com/macros/s/AKfycbzhwNTB1cK11Y3Wm7uiuVrzNmu1HD1IlDTPlAJ37oUDgPIabCWbZqMZr-86mnUDK_JPBA/exec?action=getPedidos&sucursal=${encodeURIComponent(sucursal)}&estados=liberado`;
     const response = await fetch(url);
     const data = await response.json();
     const pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
 
+    console.log('\n=== [CORTE DE CAJA DEBUG] ===');
+    console.log('Fecha/hora actual servidor:', new Date().toISOString());
+    console.log('Sucursal recibida:', sucursal);
+    console.log('Pedidos recibidos:', pedidos.length);
+
+    pedidos.forEach((p, i) => {
+      const fecha = p.fecha || p.Fecha || p.date || p.Date;
+      console.log(`[Pedido ${i}] Fecha cruda:`, fecha, '| Estado:', p.estado, '| Pago:', p.pago || p.payMethod, '| Total:', p.total);
+    });
+
     function esMismoDia(pedido) {
       const fecha = pedido.fecha || pedido.Fecha || pedido.date || pedido.Date;
-      if (!fecha) return false;
-      // Obtén solo la parte de la fecha (ignora la hora si viene)
-      const soloFecha = fecha.substring(0, 10); // Ej: "2025-08-08" o "08/08/2025"
-      let pedidoDateObj;
-      // Intenta parsear ambos formatos
-      if (/^\d{2}\/\d{2}\/\d{4}$/.test(soloFecha)) {
-        const [dia, mes, anio] = soloFecha.split('/');
-        pedidoDateObj = new Date(`${anio}-${mes}-${dia}`);
-      } else if (/^\d{4}-\d{2}-\d{2}$/.test(soloFecha)) {
-        pedidoDateObj = new Date(soloFecha);
-      } else {
+      if (!fecha) {
+        console.log('> Pedido sin fecha:', pedido);
         return false;
       }
-      if (isNaN(pedidoDateObj)) return false;
+      // Parte de la fecha solamente
+      const soloFecha = fecha.substring(0, 10);
+      let pedidoDateObj;
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(soloFecha)) { // dd/mm/yyyy
+        const [dia, mes, anio] = soloFecha.split('/');
+        pedidoDateObj = new Date(`${anio}-${mes}-${dia}`);
+      } else if (/^\d{4}-\d{2}-\d{2}$/.test(soloFecha)) { // yyyy-mm-dd
+        pedidoDateObj = new Date(soloFecha);
+      } else {
+        console.log('> Formato de fecha NO reconocido:', soloFecha, '| Pedido:', pedido);
+        return false;
+      }
+      if (isNaN(pedidoDateObj)) {
+        console.log('> Fecha inválida:', soloFecha, '| Pedido:', pedido);
+        return false;
+      }
       const ahora = new Date();
-      return (
+      const mismoDia = (
         pedidoDateObj.getFullYear() === ahora.getFullYear() &&
         pedidoDateObj.getMonth() === ahora.getMonth() &&
         pedidoDateObj.getDate() === ahora.getDate()
       );
+      console.log('> Comparando:', pedidoDateObj.toISOString().substring(0, 10), '<->', ahora.toISOString().substring(0, 10), '=>', mismoDia);
+      return mismoDia;
     }
-  
+
     const pedidosDelDia = pedidos.filter(esMismoDia);
+
+    console.log('Pedidos del día:', pedidosDelDia.length);
 
     let efectivo = 0, tarjeta = 0;
     pedidosDelDia.forEach(p => {
       const pago = (p.pago || p.payMethod || '').toLowerCase();
       const totalPedido = parseFloat(p.total) || 0;
+      console.log('  > Pago:', pago, '| Total:', totalPedido);
       if (pago === 'efectivo') efectivo += totalPedido;
       else if (pago === 'tarjeta') tarjeta += totalPedido;
     });
 
     const total = efectivo + tarjeta;
+    console.log('Resumen corte -> Efectivo:', efectivo, 'Tarjeta:', tarjeta, 'Total:', total);
+    console.log('=============================\n');
+
     res.json({
       efectivo: efectivo.toFixed(2),
       tarjeta: tarjeta.toFixed(2),
