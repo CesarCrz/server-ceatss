@@ -107,7 +107,7 @@ app.post('/api/pedidos/:codigo/estado', async (req, res) => {
   if (msg) {
     try {
       //ENVIO AL WEBHOOK PASO 1
-      await fetch(WEBHOOK_URL, {
+      await fetch(API_URL, {
         method: 'POST',
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -115,20 +115,12 @@ app.post('/api/pedidos/:codigo/estado', async (req, res) => {
           nombre: pedido.nombre,
           estadoAnterior,
           nuevoEstado,
-          mensaje: msg,
+          number: pedido.numero,
+          message: msg,
           timestamp: new Date().toISOString()
         })
       });
-      //ENVIO AL CLIENTE PASO 2
-      await fetch(API_URL, {
-        method: 'POST',
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          number: pedido.telefono,
-          message: msg
-        })
-      });
-      console.log(`JSON ENVIADO AL API: JSON.stringify({number: pedido.telefono, message: msg}`);
+      console.log('enviado al api')
     } catch (e) {
       console.error("Error enviando webhook:", e);
       // Puedes ignorar el error o retornarlo si lo deseas
