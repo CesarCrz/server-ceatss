@@ -455,6 +455,7 @@ app.post('/api/enviarCorte', async (req, res) => {
     doc.moveDown();
     doc.text(`Ventas en efectivo: $${efectivo.toFixed(2)}`);
     doc.text(`Ventas con tarjeta: $${tarjeta.toFixed(2)}`);
+    doc.text(`Venta en sucursal $${ventaSucursal.toFixed(2)}`);
     doc.text(`Total de ventas: $${total.toFixed(2)}`);
     doc.end();
   } catch (err) {
