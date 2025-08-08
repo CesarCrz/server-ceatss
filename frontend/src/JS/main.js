@@ -2052,6 +2052,7 @@ function cargarCorteSucursal(sucursal) {
     .then(res => res.json())
     .then(data => {
       // Backend responde: { efectivo, tarjeta, total }
+      console.log('Datos recibidos de corte: ', data);  
       document.getElementById('ventaEfectivo').textContent = "$" + (data.efectivo ?? "undefined");
       document.getElementById('ventaTerminal').textContent = "$" + (data.tarjeta ?? "undefined");
       document.getElementById('ventaSucursal').textContent = "$" + (data.ventaSucursal ?? "undefined");
