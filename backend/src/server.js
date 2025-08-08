@@ -60,7 +60,7 @@ function guardarPedidos(pedidos) {
 
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const WEBHOOK_URL = 'https://webhook.site/7b1378dd-eb7e-4ed8-a737-26653fc2dbe6';
-const API_URL = 'https://bot.sushisoru.com.mx/v1/message';
+const API_URL = 'https://bot.sushisoru.com.mx/v1/messages';
 
 // Cambios aquí: endpoint para cambiar estado y enviar webhook simulando WhatsApp
 app.post('/api/pedidos/:codigo/estado', async (req, res) => {
