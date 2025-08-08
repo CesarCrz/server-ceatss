@@ -2011,6 +2011,7 @@ popupCorte.addEventListener('click', (e) => {
     selectSucursal.value = '';
     document.getElementById('ventaEfectivo').textContent = '$0.00';
     document.getElementById('ventaTerminal').textContent = '$0.00';
+    document.getElementById('ventaSucursal').textContent = '$0.00';
     document.getElementById('ventaTotal').textContent = '$0.00';
   }
 });
@@ -2021,6 +2022,7 @@ document.addEventListener('keydown', (e) => {
     selectSucursal.value = '';
     document.getElementById('ventaEfectivo').textContent = '$0.00';
     document.getElementById('ventaTerminal').textContent = '$0.00';
+    document.getElementById('ventaSucursal').textContent = '$0.00';
     document.getElementById('ventaTotal').textContent = '$0.00';
   }
 });
