@@ -319,7 +319,7 @@ app.get('/api/corte', async (req, res) => {
   }
 
   try {
-    const url = `https://script.google.com/macros/s/AKfycbzhwNTB1cK11Y3Wm7uiuVrzNmu1HD1IlDTPlAJ37oUDgPIabCWbZqMZr-86mnUDK_JPBA/exec?action=getPedidos&sucursal=${encodeURIComponent(sucursal)}&estados=liberado`;
+    const url = https://script.google.com/macros/s/AKfycbzhwNTB1cK11Y3Wm7uiuVrzNmu1HD1IlDTPlAJ37oUDgPIabCWbZqMZr-86mnUDK_JPBA/exec?action=getPedidos&sucursal=${encodeURIComponent(sucursal)}&estados=liberado;
     const response = await fetch(url);
     const data = await response.json();
     const pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
@@ -341,24 +341,24 @@ app.get('/api/corte', async (req, res) => {
 
     const pedidosDelDia = pedidos.filter(esMismoDia);
 
-    let efectivo = 0, tarjeta = 0, otros = 0;
+    let efectivo = 0, tarjeta = 0, ventaSucursal = 0;
     pedidosDelDia.forEach(p => {
       const pago = (p.pago || p.payMethod || p.metodoPago || '').toLowerCase();
       const totalPedido = parseFloat(p.total) || 0;
       if (pago === 'efectivo') efectivo += totalPedido;
       else if (pago === 'tarjeta') tarjeta += totalPedido;
       else {
-        otros += totalPedido;
-        console.warn('Pedido sin método de pago (sumado a "otros"):', p);
+        ventaSucursal += totalPedido;
+        console.warn('Pedido sin método de pago (sumado a "ventaSucursal"):', p);
       }
     });
 
-    const total = efectivo + tarjeta + otros;
+    const total = efectivo + tarjeta + ventaSucursal;
 
     res.json({
       efectivo: efectivo.toFixed(2),
       tarjeta: tarjeta.toFixed(2),
-      otros: otros.toFixed(2),
+      ventaSucursal: ventaSucursal.toFixed(2),
       total: total.toFixed(2)
     });
   } catch (err) {
