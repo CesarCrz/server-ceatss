@@ -479,9 +479,9 @@ app.post('/api/enviarCorte', async (req, res) => {
     doc.fontSize(15).text('--- Reporte de Ventas ---', {align: 'left'});
     doc.moveDown(0.5);
 
-    doc.fontSize(12).text(`Pedidos eliminados: ${eliminados.length}`);
-    doc.fontSize(12).text(`Pedidos liberados: ${liberados.length}`);
-    doc.fontSize(12).text(`Tiempo promedio: ${promedioTiempo} min`);
+    doc.fontSize(13).text(`Pedidos eliminados: ${eliminados.length}`);
+    doc.fontSize(13).text(`Pedidos liberados: ${liberados.length}`);
+    doc.fontSize(13).text(`Tiempo promedio: ${promedioTiempo} min`);
     doc.moveDown();
 
     doc.fontSize(13).text(`Ventas en efectivo: $${efectivo.toFixed(2)}`);
