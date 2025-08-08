@@ -2060,7 +2060,7 @@ function cargarCorteSucursal(sucursal) {
     .catch(() => {
       document.getElementById('ventaEfectivo').textContent = "$undefined";
       document.getElementById('ventaTerminal').textContent = "$undefined";
-      document.getElementById('ventaSucursal').textContent = "$" + (data.ventaSucursal ?? "undefined");
+      document.getElementById('ventaSucursal').textContent = "$undefined";
       document.getElementById('ventaTotal').textContent = "$undefined";
     });
 }
