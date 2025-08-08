@@ -309,6 +309,12 @@ app.get('/api/corte', async (req, res) => {
     return res.status(400).json({ error: 'Falta el parámetro de sucursal' });
   }
 
+  // Helper para convertir a hora de México
+  function getMexicoDate(dateObj) {
+    // Esto convierte la fecha a la hora de México sin importar desde dónde corre el servidor.
+    return new Date(dateObj.toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
+  }
+
   try {
     // URL de Apps Script
     const url = `https://script.google.com/macros/s/AKfycbzhwNTB1cK11Y3Wm7uiuVrzNmu1HD1IlDTPlAJ37oUDgPIabCWbZqMZr-86mnUDK_JPBA/exec?action=getPedidos&sucursal=${encodeURIComponent(sucursal)}&estados=liberado`;
@@ -317,7 +323,8 @@ app.get('/api/corte', async (req, res) => {
     const pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
 
     console.log('\n=== [CORTE DE CAJA DEBUG] ===');
-    console.log('Fecha/hora actual servidor:', new Date().toISOString());
+    const ahora = getMexicoDate(new Date());
+    console.log('Fecha/hora actual servidor (MX):', ahora.toISOString());
     console.log('Sucursal recibida:', sucursal);
     console.log('Pedidos recibidos:', pedidos.length);
 
@@ -332,29 +339,19 @@ app.get('/api/corte', async (req, res) => {
         console.log('> Pedido sin fecha:', pedido);
         return false;
       }
-      // Parte de la fecha solamente
-      const soloFecha = fecha.substring(0, 10);
-      let pedidoDateObj;
-      if (/^\d{2}\/\d{2}\/\d{4}$/.test(soloFecha)) { // dd/mm/yyyy
-        const [dia, mes, anio] = soloFecha.split('/');
-        pedidoDateObj = new Date(`${anio}-${mes}-${dia}`);
-      } else if (/^\d{4}-\d{2}-\d{2}$/.test(soloFecha)) { // yyyy-mm-dd
-        pedidoDateObj = new Date(soloFecha);
-      } else {
-        console.log('> Formato de fecha NO reconocido:', soloFecha, '| Pedido:', pedido);
-        return false;
-      }
+      let pedidoDateObj = new Date(fecha);
       if (isNaN(pedidoDateObj)) {
-        console.log('> Fecha inválida:', soloFecha, '| Pedido:', pedido);
+        console.log('> Fecha inválida:', fecha, '| Pedido:', pedido);
         return false;
       }
-      const ahora = new Date();
+      const pedidoLocal = getMexicoDate(pedidoDateObj);
+
       const mismoDia = (
-        pedidoDateObj.getFullYear() === ahora.getFullYear() &&
-        pedidoDateObj.getMonth() === ahora.getMonth() &&
-        pedidoDateObj.getDate() === ahora.getDate()
+        pedidoLocal.getFullYear() === ahora.getFullYear() &&
+        pedidoLocal.getMonth() === ahora.getMonth() &&
+        pedidoLocal.getDate() === ahora.getDate()
       );
-      console.log('> Comparando:', pedidoDateObj.toISOString().substring(0, 10), '<->', ahora.toISOString().substring(0, 10), '=>', mismoDia);
+      console.log('> Comparando local MX:', pedidoLocal.toISOString().substring(0, 10), '<->', ahora.toISOString().substring(0, 10), '=>', mismoDia);
       return mismoDia;
     }
 
