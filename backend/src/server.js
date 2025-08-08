@@ -375,6 +375,10 @@ app.post('/api/enviarCorte', async (req, res) => {
       return res.status(400).json({ error: 'Faltan datos para enviar el corte' });
     }
 
+    // Fecha de México para asunto y PDF
+    const ahoraMX = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' });
+    const fechaMX = new Date().toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City' });
+
     // 1. Pide los pedidos liberados a tu Apps Script
     const corteResp = await fetch('https://script.google.com/macros/s/AKfycbzhwNTB1cK11Y3Wm7uiuVrzNmu1HD1IlDTPlAJ37oUDgPIabCWbZqMZr-86mnUDK_JPBA/exec?action=getPedidos&sucursal=' + encodeURIComponent(sucursal) + '&estados=liberado');
     const data = await corteResp.json();
@@ -430,13 +434,13 @@ app.post('/api/enviarCorte', async (req, res) => {
       });
 
       await transporter.sendMail({
-        from: 'Sushi Soru Restaurant <dannglezhdzo@gmail.com>',
+        from: 'Sushi Soru Restaurant <dannyglezhdzo@gmail.com>',
         to: correoDestinatario,
-        subject: `Corte de caja - ${sucursal}`,
+        subject: `Corte de caja - ${sucursal} - ${fechaMX}`,
         text: `Corte de caja generado por ${nombreDestinatario || correoDestinatario}`,
         attachments: [
           {
-            filename: `Corte_${sucursal}_${new Date().toISOString().substring(0, 10)}.pdf`,
+            filename: `Corte_${sucursal}_${fechaMX.replace(/\//g, '-')}.pdf`,
             content: pdfData
           }
         ]
@@ -447,7 +451,7 @@ app.post('/api/enviarCorte', async (req, res) => {
 
     doc.fontSize(20).text(`Corte de caja - ${sucursal}`, {align: 'center'});
     doc.moveDown();
-    doc.fontSize(14).text(`Fecha: ${new Date().toLocaleString()}`);
+    doc.fontSize(14).text(`Fecha: ${ahoraMX}`);
     doc.moveDown();
     doc.text(`Ventas en efectivo: $${efectivo.toFixed(2)}`);
     doc.text(`Ventas con tarjeta: $${tarjeta.toFixed(2)}`);
