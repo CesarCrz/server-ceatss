@@ -128,6 +128,7 @@ app.post('/api/pedidos/:codigo/estado', async (req, res) => {
           message: msg
         })
       });
+      console.log("JSON ENVIADO AL API: JSON.stringify({number: pedido.telefono, message: msg});
     } catch (e) {
       console.error("Error enviando webhook:", e);
       // Puedes ignorar el error o retornarlo si lo deseas
