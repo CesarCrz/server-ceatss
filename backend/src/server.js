@@ -319,6 +319,7 @@ app.get('/api/corte', async (req, res) => {
   }
 
   try {
+    // Usa BACKTICKS aquí ⬇️
     const url = `https://script.google.com/macros/s/AKfycbzhwNTB1cK11Y3Wm7uiuVrzNmu1HD1IlDTPlAJ37oUDgPIabCWbZqMZr-86mnUDK_JPBA/exec?action=getPedidos&sucursal=${encodeURIComponent(sucursal)}&estados=liberado`;
     const response = await fetch(url);
     const data = await response.json();
