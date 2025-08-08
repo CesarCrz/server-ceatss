@@ -316,18 +316,18 @@ app.get('/api/corte', async (req, res) => {
     const data = await response.json();
     const pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
 
-    // Cambia el filtro por fecha exacta (solo hoy)
     function esMismoDia(pedido) {
       const fecha = pedido.fecha || pedido.Fecha || pedido.date || pedido.Date;
       if (!fecha) return false;
+      // Obtén solo la parte de la fecha (ignora la hora si viene)
+      const soloFecha = fecha.substring(0, 10); // Ej: "2025-08-08" o "08/08/2025"
       let pedidoDateObj;
-      if (/^\d{2}\/\d{2}\/\d{4}$/.test(fecha)) {
-        const [dia, mes, anio] = fecha.split('/');
+      // Intenta parsear ambos formatos
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(soloFecha)) {
+        const [dia, mes, anio] = soloFecha.split('/');
         pedidoDateObj = new Date(`${anio}-${mes}-${dia}`);
-      } else if (/^\d{4}-\d{2}-\d{2}/.test(fecha)) {
-        pedidoDateObj = new Date(fecha);
-      } else if (fecha.includes('T')) {
-        pedidoDateObj = new Date(fecha);
+      } else if (/^\d{4}-\d{2}-\d{2}$/.test(soloFecha)) {
+        pedidoDateObj = new Date(soloFecha);
       } else {
         return false;
       }
@@ -339,6 +339,7 @@ app.get('/api/corte', async (req, res) => {
         pedidoDateObj.getDate() === ahora.getDate()
       );
     }
+  
     const pedidosDelDia = pedidos.filter(esMismoDia);
 
     let efectivo = 0, tarjeta = 0;

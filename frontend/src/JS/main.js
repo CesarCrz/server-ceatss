@@ -671,6 +671,14 @@ function setupApp() {
       return;
     }
 
+    if (newPassword !== confirmNewPassword) {
+      estadoPassword.textContent = 'Las contraseñas no coinciden.';
+      estadoPassword.style.color = 'var(--danger)';
+      estadoPassword.timeout = setTimeout(() => {
+        estadoPassword.textContent = '';
+      }, 3000);
+    }
+
     // EMAIL SEGUN PERFIL SELECCIONADO
     let emailSelected;
     if (profileSelect === 'Admin') {
@@ -686,6 +694,9 @@ function setupApp() {
       return;
     }
     
+    estadoPassword.textContent = 'Procesando...';
+    estadoPassword.style.color = 'var(--primary)';
+
     // IF PARA CONFIRMAR LA CONTRASEÑA ACTUAL
     fetch('/api/verificarPassword', {
       method: 'POST',
@@ -2123,7 +2134,11 @@ function enviarCorteEmail() {
     estadoCorreo.timeout = setTimeout(() => {
       estadoCorreo.textContent = '';
     }, 3000);
+    return;
   }
+
+  estadoCorreo.textContent = 'Enviando...';
+  estadoCorreo.style.color = 'var(--primary)';
 
   fetch('/api/enviarCorte', {
     method: 'POST',
