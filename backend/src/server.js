@@ -221,12 +221,18 @@ app.delete('/api/pedidos/:codigo', (req, res) => {
   res.json({ success: true, pedido: eliminado });
 })
 
-// Cancelado ya lo tenías: también manda webhook
 app.post('/api/cancelarPedido', async (req, res) => {
   const { codigoPedido, motivo } = req.body;
-  // Usa la misma URL de webhook que arriba
   if (!codigoPedido || !motivo) {
     return res.status(400).json({ success: false, error: 'Faltan datos' });
+  }
+
+  // Busca el pedido antes de usarlo
+  let pedidos = cargarPedidos();
+  const pedido = pedidos.find(p => p.codigo === codigoPedido || p.orderId === codigoPedido);
+
+  if (!pedido) {
+    return res.status(404).json({ success: false, error: 'Pedido no encontrado' });
   }
 
   try {
@@ -237,7 +243,7 @@ app.post('/api/cancelarPedido', async (req, res) => {
         codigoPedido,
         motivo,
         timestamp: new Date().toISOString(),
-        number: pedido.numero,
+        number: pedido.numero, // Ahora sí existe
         message: `⚠️ *Pedido ${codigoPedido}*\n Sentimos mucho que tu pedido no pueda llegar esta vez`
       })
     });
@@ -252,7 +258,7 @@ app.post('/api/cancelarPedido', async (req, res) => {
       return res.status(500).json({ success: false, error: 'No se pudo actualizar el estado en Sheets.' });
     }
 
-    let pedidos = cargarPedidos();
+    // Borrar localmente
     const idx = pedidos.findIndex(p => p.codigo === codigoPedido || p.orderId === codigoPedido);
     if (idx === -1) {
       return res.status(404).json({ success: false, error: 'Pedido no encontrado' });
