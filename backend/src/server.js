@@ -244,7 +244,7 @@ app.post('/api/cancelarPedido', async (req, res) => {
         motivo,
         timestamp: new Date().toISOString(),
         number: pedido.numero, // Ahora sí existe
-        message: `⚠️ *Pedido ${codigoPedido}*\n Sentimos mucho que tu pedido no pueda llegar esta vez`
+        message: `⚠️ *Pedido ${codigoPedido}*\n Sentimos mucho que tu pedido no pueda llegar esta vez. \nMotivo de la cancelación: ${motivo}`
       })
     });
 
