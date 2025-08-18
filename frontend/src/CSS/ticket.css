@@ -240,6 +240,37 @@ body {
     margin-bottom: 2mm;
 }
 
+.customer-comments-box {
+    border: 2px dashed #888;
+    border-radius: 10px;
+    background: #f7f7f7;
+    padding: 8px 12px;
+    margin: 8px 0 12px 0;
+    font-size: 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.comments-icon {
+    font-size: 15px;
+    margin-right: 4px;
+    color: #888;
+    flex-shrink: 0;
+}
+
+.comments-label {
+    font-weight: bold;
+    margin-right: 6px;
+}
+
+.customer-comments-box #specs {
+    font-style: italic;
+    color: #333;
+    margin-left: 3px;
+    white-space: pre-line;
+}
+
 /* Asegurar que el ID de pedido sea visible */
 .info:nth-child(4) {  /* Selector para el elemento que muestra el ID de pedido */
     font-weight: bold;

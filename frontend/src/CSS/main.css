@@ -2198,30 +2198,33 @@ gap: 10px;
 .popup-comentarios-pedido {
   margin-top: 10px;
   font-size: 1em;
-  background: #fffbe7;
+  background: #004fc1;
   border-radius: 5px;
   padding: 8px 10px;
-  color: #444;
+  color: #fff;
+  /* font-weight: bold; */
 }
 
 /* ADDRESS POPUP´s */
 .popup-domicilio {
   margin-top: 10px;
   font-size: 1em;
-  background: #fffbe7;
+  background: #004fc1;
   border-radius: 5px;
   padding: 8px 10px;
-  color: #444;
+  color: #fff;
+  /* font-weight: bold; */
 }
 
 /* DELIVER TO POPUP */
 .popup-deliver-to {
   margin-top: 10px;
   font-size: 1em;
-  background: #fffbe7;
+  background: #004fc1;
   border-radius: 5px;
   padding: 8px 10px;
-  color: #444;
+  color: #fff;
+  /* font-weight: bold; */
 }
 
 /* POPUP CORTE DE CAJA */

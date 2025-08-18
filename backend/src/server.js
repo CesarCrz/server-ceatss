@@ -10,10 +10,27 @@ const server = http.createServer(app)
 const io = socketIo(server)
 const PDFDocument = require('pdfkit');
 const nodemailer = require('nodemailer');
+const doc = require('pdfkit');
+const puppeteer = require('puppeteer');
+const handlebars = require('handlebars');
 const PORT = process.env.PORT || 3000;
 
-// Rutas relativas al backend/src
-const PEDIDOS_FILE = path.join(__dirname, 'pedidos.json');
+function getPedidosFile(restaurante) {
+  const name = (restaurante || 'Soru').toLowerCase();
+  return path.join(__dirname, `pedidos_${name}.json`);
+}
+
+function cargarPedidos(restaurante) {
+  const file = getPedidosFile(restaurante);
+  if (!fs.existsSync(file)) return [];
+  const raw = fs.readFileSync(file, 'utf-8');
+  return JSON.parse(raw);
+}
+
+function guardarPedidos(pedidos, restaurante) {
+  const file = getPedidosFile(restaurante);
+  fs.writeFileSync(file, JSON.stringify(pedidos, null, 2), 'utf-8');
+}
 
 // Carpeta frontend raíz y src
 const FRONTEND_ROOT = path.join(__dirname, '..', '..', 'frontend');
@@ -47,16 +64,6 @@ app.get('/ticket', (req, res) => {
 app.get('/main/pedidos/:sucursal', (req, res) => {
   res.sendFile(path.join(FRONTEND_SRC, 'pages', 'main.html'));
 });
-
-function cargarPedidos() {
-  if (!fs.existsSync(PEDIDOS_FILE)) return []
-  const raw = fs.readFileSync(PEDIDOS_FILE, 'utf-8');
-  return JSON.parse(raw);
-}
-
-function guardarPedidos(pedidos) {
-  fs.writeFileSync(PEDIDOS_FILE, JSON.stringify(pedidos, null, 2), 'utf-8');
-}
 
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const WEBHOOK_URL = 'https://webhook.site/7b1378dd-eb7e-4ed8-a737-26653fc2dbe6';
@@ -97,15 +104,14 @@ app.post('/api/pedidos/:codigo/estado', async (req, res) => {
   // Mensajes simulados de WhatsApp por estado
   let msg = null;
   if (estadoAnterior === 'pendiente' && nuevoEstado === 'en preparacion') {
-      msg = `📋 *Pedido ${pedido.codigo}\n* ¡Ya estamos en marcha! Preparamos tu pedido con el espíritu Soru: fresco, creativo y a tu gusto. Disfruta pronto de algo elaborado especialmente para ti坠 �🍣`;
-    }
-    else if (estadoAnterior === 'en preparacion' && nuevoEstado === 'listo') {
-      msg = `✅*Pedido esperando al repartidor*\n Tu pedido ya fue preparado con nuestro toque único de Soru, en un momento más llegará nuestro repartidor, sigue atento!!\n\n Agradecemos tu paciencia y preferencia`;
-    }
-    else if (estadoAnterior === 'listo' && nuevoEstado === 'liberado'){
-      msg = `🛵 *Tu pedido va en camino*\nNuestro repartidor ya va rumbo a ti con tu platillo recién preparado 🥢🍜\n¡Gracias por elegir Soru! En unos minutos estarás disfrutando de tu comida como se debe ✨`
+    msg = `📋 *Pedido ${pedido.codigo}*\n ¡Ya estamos en marcha! Preparamos tu pedido con el espíritu Soru: fresco, creativo y a tu gusto. Disfruta pronto de algo elaborado especialmente para ti坠 �🍣`;
   }
-
+  else if (estadoAnterior === 'en preparacion' && nuevoEstado === 'listo') {
+    msg = `✅ *Pedido esperando al repartidor*\n Tu pedido ya fue preparado con nuestro toque único de Soru, en un momento más llegará nuestro repartidor, sigue atento!!\n\n Agradecemos tu paciencia y preferencia`;
+  }
+  else if (estadoAnterior === ''){ // listo -> liberado desaparece
+    msg = `🛵 *Tu pedido va en camino*\nNuestro repartidor ya va rumbo a ti con tu platillo recién preparado 🥢🍜\n¡Gracias por elegir Soru! En unos minutos estarás disfrutando de tu comida como se debe ✨`
+  }
 
   // Enviar webhook si corresponde
   if (msg) {
@@ -134,11 +140,15 @@ app.post('/api/pedidos/:codigo/estado', async (req, res) => {
   res.json({ success: true, pedido: pedidos[idx] });
 });
 
-// Endpoint para que Google Apps Script mande nuevos pedidos
 app.post('/api/pedidos/:sucursal', (req, res) => {
   const { sucursal } = req.params;
   const pedido = req.body;
 
+  // Usa el campo restaurante que llega en el pedido
+  const restaurante = (pedido.restaurante || 'Soru').toString();
+
+  pedido.sucursal = pedido.sucursal || sucursal;
+  pedido.restaurante = restaurante;
   pedido.codigo = pedido.codigo || pedido.orderId;
 
   // Normaliza el pedido para que siempre tenga un array en pedido.pedido
@@ -162,30 +172,28 @@ app.post('/api/pedidos/:sucursal', (req, res) => {
     pedido.pedido = [];
   }
 
-  console.log(`Pedido nuevo para ${sucursal}:`, pedido);
-  let pedidos = cargarPedidos();
-
+  // Cargar y guardar en el archivo correcto, evita duplicados por codigo
+  let pedidos = cargarPedidos(restaurante);
   const yaExiste = pedidos.some(p => p.codigo === pedido.codigo);
   if (!yaExiste) {
     pedidos.push(pedido);
-    guardarPedidos(pedidos);
+    guardarPedidos(pedidos, restaurante);
   }
-  
+
   io.emit('new_order', pedido);
 
   res.sendStatus(201);
 });
 
 app.get('/api/pedidos/:codigo', (req, res) => {
-  const codigo = req.params.codigo;
-  const pedidos = cargarPedidos();
-  const pedido = pedidos.find(p => p.codigo === codigo || p.orderId === codigo);
-
-  if (pedido) {
-    res.json(pedido);
-  } else {
-    res.status(404).json({error: 'Pedido no encontrado'});
+  // IMPORTANTE: busca en todos los archivos
+  const files = fs.readdirSync(__dirname).filter(f => f.startsWith('pedidos_') && f.endsWith('.json'));
+  for (const file of files) {
+    const pedidos = JSON.parse(fs.readFileSync(path.join(__dirname, file), 'utf-8'));
+    const pedido = pedidos.find(p => p.codigo === req.params.codigo || p.orderId === req.params.codigo);
+    if (pedido) return res.json(pedido);
   }
+  res.status(404).json({error: 'Pedido no encontrado'});
 });
 
 app.get('/api/obtenerPedidos', async (req, res) => {
@@ -204,7 +212,7 @@ app.get('/api/obtenerPedidos', async (req, res) => {
   }
 });
 
-app.delete('/api/pedidos/:codigo', (req, res) => {
+app.delete('/api/pedidos/:codigo', async (req, res) => {
   const codigo = req.params.codigo;
   let pedidos = cargarPedidos();
 
@@ -213,13 +221,46 @@ app.delete('/api/pedidos/:codigo', (req, res) => {
     return res.status(404).json({ success: false, error: 'Pedido no encontrado' });
   }
 
-  const eliminado = pedidos.splice(idx, 1)[0];
+  // 1. Guarda el pedido a eliminar para usar sus datos
+  const eliminado = pedidos[idx];
+
+  // 2. ENVÍA EL MENSAJE WHATSAPP ANTES DE BORRAR
+  try {
+    // Solo si el pedido estaba en estado "listo" y ahora será "liberado"
+    const estadoAnterior = (eliminado.estado || '').toLowerCase();
+    if (estadoAnterior === 'listo') {
+      // Mensaje de liberado
+      const msg = `🛵 *Tu pedido va en camino*\nNuestro repartidor ya va rumbo a ti con tu platillo recién preparado 🥢🍜\n¡Gracias por elegir Soru! En unos minutos estarás disfrutando de tu comida como se debe ✨`;
+
+      await fetch(API_URL, {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          codigoPedido: eliminado.codigo,
+          nombre: eliminado.nombre,
+          estadoAnterior: estadoAnterior,
+          nuevoEstado: 'liberado',
+          number: eliminado.numero,
+          message: msg,
+          timestamp: new Date().toISOString()
+        })
+      });
+      // Puedes loggear si quieres
+      console.log(`[WhatsApp Liberado] Mensaje enviado para pedido ${eliminado.codigo}`);
+    }
+  } catch (e) {
+    console.error("Error enviando mensaje liberado:", e);
+    // Puedes ignorar el error si no quieres interrumpir el flujo
+  }
+
+  // 3. Borra el pedido del archivo
+  pedidos.splice(idx, 1);
   guardarPedidos(pedidos);
 
   io.emit('pedido_eliminado', eliminado);
 
   res.json({ success: true, pedido: eliminado });
-})
+});
 
 app.post('/api/cancelarPedido', async (req, res) => {
   const { codigoPedido, motivo } = req.body;
@@ -376,39 +417,43 @@ app.get('/api/corte', async (req, res) => {
 
 app.post('/api/enviarCorte', async (req, res) => {
   try {
+    const restaurante = (req.body.restaurante || 'Soru')
     const { sucursal, nombreDestinatario, correoDestinatario } = req.body;
     if (!sucursal || !correoDestinatario) {
       return res.status(400).json({ error: 'Faltan datos para enviar el corte' });
     }
 
-    // Fecha de México para asunto y PDF
-    const ahoraMX = new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' });
-    const fechaMX = new Date().toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City' });
-
     // 1. Pide los pedidos liberados y cancelados a tu Apps Script
     const corteResp = await fetch(
       'https://script.google.com/macros/s/AKfycbzhwNTB1cK11Y3Wm7uiuVrzNmu1HD1IlDTPlAJ37oUDgPIabCWbZqMZr-86mnUDK_JPBA/exec?action=getPedidos&sucursal=' +
-      encodeURIComponent(sucursal) + '&estados=liberado,cancelado'
+      encodeURIComponent(sucursal) + '&estados=liberado,cancelado' + '&restaurante=' + encodeURIComponent(restaurante)
     );
     const data = await corteResp.json();
 
-    // 2. Filtra por fecha de hoy (hora de México)
+    // 2. Filtra por fecha de hoy (formato dd/mm/yyyy)
     function esMismoDia(pedido) {
-      const fecha = pedido.fecha || pedido.Fecha || pedido.date || pedido.Date;
-      if (!fecha) return false;
-      let pedidoDateObj;
-      if (/^\d{2}\/\d{2}\/\d{4}$/.test(fecha)) {
-        const [dia, mes, anio] = fecha.split('/');
-        pedidoDateObj = new Date(`${anio}-${mes}-${dia}`);
-      } else if (/^\d{4}-\d{2}-\d{2}/.test(fecha)) {
-        pedidoDateObj = new Date(fecha);
-      } else if (fecha.includes('T')) {
-        pedidoDateObj = new Date(fecha);
-      } else {
-        return false;
-      }
+    const fechaRaw = pedido.fecha || pedido.Fecha || pedido.date || pedido.Date;
+    if (!fechaRaw) return false;
+
+    // Si la fecha viene como ISO (incluye "T")
+    if (fechaRaw.includes('T')) {
+      const utcDate = new Date(fechaRaw);
+      const mxDateStr = utcDate.toLocaleString('en-US', { timeZone: 'America/Mexico_City' });
+      const mxDate = new Date(mxDateStr);
+      const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
+      return (
+        mxDate.getFullYear() === ahora.getFullYear() &&
+        mxDate.getMonth() === ahora.getMonth() &&
+        mxDate.getDate() === ahora.getDate()
+      );
+    }
+
+    // Si la fecha viene como dd/mm/yyyy
+    if (/^\d{2}\/\d{2}\/\d{4}/.test(fechaRaw)) {
+      const soloFecha = fechaRaw.split(' ')[0];
+      const [dia, mes, anio] = soloFecha.split('/');
+      const pedidoDateObj = new Date(`${anio}-${mes}-${dia}`);
       if (isNaN(pedidoDateObj)) return false;
-      // Fecha actual en MX
       const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
       return (
         pedidoDateObj.getFullYear() === ahora.getFullYear() &&
@@ -417,15 +462,31 @@ app.post('/api/enviarCorte', async (req, res) => {
       );
     }
 
+    // Si la fecha viene como yyyy-mm-dd
+    if (/^\d{4}-\d{2}-\d{2}/.test(fechaRaw)) {
+      const pedidoDateObj = new Date(fechaRaw);
+      const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
+      return (
+        pedidoDateObj.getFullYear() === ahora.getFullYear() &&
+        pedidoDateObj.getMonth() === ahora.getMonth() &&
+        pedidoDateObj.getDate() === ahora.getDate()
+      );
+    }
+
+    return false;
+  }
+
     const pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
     const pedidosDelDia = pedidos.filter(esMismoDia);
+
+    // Debug: verifica cómo viene la fecha y los pedidos filtrados
+    console.log("Fechas recibidas:", pedidos.map(p => p.fecha || p.Fecha || p.date || p.Date));
+    console.log("Pedidos del día:", pedidosDelDia);
 
     // 3. Estadísticas igual que en el dashboard
     const eliminados = pedidosDelDia.filter(p => (p.estado || p.Estado || '').toLowerCase() === 'cancelado');
     const liberados = pedidosDelDia.filter(p => (p.estado || p.Estado || '').toLowerCase() === 'liberado');
-    const tiempos = liberados
-      .map(p => parseInt(p.tiempo || p.Tiempo))
-      .filter(t => !isNaN(t));
+    const tiempos = liberados.map(p => parseInt(p.tiempo || p.Tiempo)).filter(t => !isNaN(t));
     const promedioTiempo = tiempos.length > 0
       ? Math.round(tiempos.reduce((a, b) => a + b, 0) / tiempos.length)
       : 0;
@@ -437,64 +498,88 @@ app.post('/api/enviarCorte', async (req, res) => {
       const totalPedido = parseFloat(p.total) || 0;
       if (pago === 'efectivo') efectivo += totalPedido;
       else if (pago === 'tarjeta') tarjeta += totalPedido;
-      else {
-        ventaSucursal += totalPedido;
-      }
+      else ventaSucursal += totalPedido;
     });
     const total = efectivo + tarjeta + ventaSucursal;
 
-    // 5. Genera el PDF y envía por correo
-    let buffers = [];
-    const doc = new PDFDocument();
-    doc.on('data', buffers.push.bind(buffers));
-    doc.on('end', async () => {
-      const pdfData = Buffer.concat(buffers);
-
-      let transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: 'dannyglezhdzo@gmail.com', // Cambia por tu correo real
-          pass: 'jexh anjd wkqi znof'      // Contraseña de aplicación
-        }
-      });
-
-      await transporter.sendMail({
-        from: 'Sushi Soru Restaurant <dannyglezhdzo@gmail.com>',
-        to: correoDestinatario,
-        subject: `Corte de caja - ${sucursal} - ${fechaMX}`,
-        text: `Corte de caja generado por ${nombreDestinatario || correoDestinatario}`,
-        attachments: [
-          {
-            filename: `Corte_${sucursal}_${fechaMX.replace(/\//g, '-')}.pdf`,
-            content: pdfData
-          }
-        ]
-      });
-
-      res.json({ enviado: true });
+    // Debug totals
+    console.log({
+      eliminados: eliminados.length,
+      liberados: liberados.length,
+      promedioTiempo,
+      efectivo,
+      tarjeta,
+      ventaSucursal,
+      total
     });
 
-    // ------ PDF Layout ------
-    doc.fontSize(22).text(`Sushi Soru`, {align: 'center'});
-    doc.fontSize(16).text(`Sucursal: ${sucursal}`, {align: 'center'});
-    doc.moveDown(0.2);
-    doc.fontSize(13).text(`Fecha: ${ahoraMX}`, {align: 'center'});
-    doc.moveDown();
-    doc.moveDown();
+    // 5. Genera el PDF con puppeteer (usando plantilla HTML)
+    // Logo en base64 (opcional)
+    let logoDataURI = '';
+    try {
+      const logoPath = path.join(__dirname, '../../frontend/src/Img/Logo_soru.png');
+      if (fs.existsSync(logoPath)) {
+        const logoBase64 = fs.readFileSync(logoPath, { encoding: 'base64' });
+        logoDataURI = `data:image/png;base64,${logoBase64}`;
+      }
+    } catch (e) {
+      logoDataURI = '';
+    }
 
-    doc.fontSize(15).text('--- Reporte de Ventas ---', {align: 'left'});
-    doc.moveDown(0.5);
+    // Lee la plantilla HTML
+    const templateHtml = fs.readFileSync(path.join(__dirname, '../../frontend/src/pages/pdf.html'), 'utf8');
+    const handlebars = require('handlebars');
+    const template = handlebars.compile(templateHtml);
 
-    doc.fontSize(13).text(`Pedidos eliminados: ${eliminados.length}`);
-    doc.fontSize(13).text(`Pedidos liberados: ${liberados.length}`);
-    doc.fontSize(13).text(`Tiempo promedio: ${promedioTiempo} min`);
-    doc.moveDown();
+    // Fecha para el PDF
+    const fechaMX = new Date().toLocaleDateString('es-MX', { timeZone: 'America/Mexico_City' });
 
-    doc.fontSize(13).text(`Ventas en efectivo: $${efectivo.toFixed(2)}`);
-    doc.fontSize(13).text(`Ventas con tarjeta: $${tarjeta.toFixed(2)}`);
-    doc.fontSize(13).text(`Venta en sucursal: $${ventaSucursal.toFixed(2)}`);
-    doc.fontSize(14).text(`Total de ventas: $${total.toFixed(2)}`);
-    doc.end();
+    // Rellena los datos en la plantilla
+    const htmlConDatos = template({
+      sucursal,
+      nombreEmpresa: "Sushi Soru Restaurant",
+      fecha: fechaMX,
+      eliminados: eliminados.length,
+      liberados: liberados.length,
+      tiempoPromedio: promedioTiempo,
+      total: total.toFixed(2),
+      efectivo: efectivo.toFixed(2),
+      tarjeta: tarjeta.toFixed(2),
+      ventaSucursal: ventaSucursal.toFixed(2),
+      logoBase64: logoDataURI
+    });
+
+    // Genera el PDF con puppeteer
+    const puppeteer = require('puppeteer');
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    await page.setContent(htmlConDatos, { waitUntil: 'networkidle0' });
+    const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
+    await browser.close();
+
+    // 6. Envía el correo con el PDF adjunto
+    let transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'dannyglezhdzo@gmail.com', // Cambia por tu correo real
+        pass: 'jexh anjd wkqi znof'      // Contraseña de aplicación
+      }
+    });
+
+    await transporter.sendMail({
+      from: 'Sushi Soru Restaurant <dannyglezhdzo@gmail.com>',
+      to: correoDestinatario,
+      subject: `Corte de caja - ${sucursal} - ${fechaMX}`,
+      text: `Corte de caja generado por ${nombreDestinatario || correoDestinatario}`,
+      attachments: [
+        {
+          filename: `Corte_${sucursal}_${fechaMX.replace(/\//g, '-')}.pdf`,
+          content: pdfBuffer
+        }
+      ]
+    });
+
+    res.json({ enviado: true });
   } catch (err) {
     console.error("Error al enviar el corte:", err);
     res.status(500).json({ error: 'Error al enviar el corte.' });
@@ -502,7 +587,8 @@ app.post('/api/enviarCorte', async (req, res) => {
 });
 
 app.get('/api/pedidos.json', (req, res) => {
-  const pedidos = cargarPedidos();
+  const restauranteQ = (req.query.restaurante || 'Soru').toString().trim();
+  const pedidos = cargarPedidos(restauranteQ);
   res.json(pedidos);
 });
 

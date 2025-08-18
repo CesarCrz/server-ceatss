@@ -107,6 +107,9 @@ async function initializeApp() {
 }
 
 async function crearPedido(nuevoPedido) {
+  // Determinar el restaurante actual (por login / configuración)
+  nuevoPedido.restaurante = nuevoPedido.restaurante || localStorage.getItem('restaurante') || 'Soru';
+
   const sucursal = nuevoPedido.sucursal;
   const response = await fetch(`/api/pedidos/${encodeURIComponent(sucursal)}`, {
     method: 'POST',
@@ -151,10 +154,16 @@ function setupSocketListeners() {
   socket.on('new_order', (pedido) => {
     console.log('🆕 Pedido recibido por socket:', pedido);
     const sucursalUsuario = (localStorage.getItem('sucursal') || '').toLowerCase();
+    const restauranteUsuario = (localStorage.getItem('restaurante') || 'Soru').toLowerCase();
     const rol = (localStorage.getItem('rol') || '').toLowerCase();
 
     if (rol !== 'admin' && (pedido.sucursal || '').toLowerCase() !== sucursalUsuario) {
       return; // Ignora pedidos de otras sucursales
+    }
+
+    if (rol !== 'admin' && (pedido.restaurante || '').toLowerCase() !== restauranteUsuario) {
+      console.log('Ignorando pedido de otro restaurante:', pedido.restaurante);
+      return;
     }
 
     if (typeof pedido.productDetails === 'string') {
@@ -1111,6 +1120,8 @@ function mostrarPopupPedidoListo(pedido) {
       });
       const dataSheets = await respSheets.json();
 
+      // MANDAR MENSAJE ANTES DE BORRAR
+      
       if (dataSheets.estado === "ESTADO_ACTUALIZADO") {
         // 2. Borra el pedido en el backend local
         const respDel = await fetch(`/api/pedidos/${codigo}`, { method: 'DELETE' });
@@ -1419,6 +1430,8 @@ function cargarPedidosEnPreparacion(sucursal) {
   // Solo traemos Pendiente y En preparacion
   const url = `https://script.google.com/macros/s/AKfycbzhwNTB1cK11Y3Wm7uiuVrzNmu1HD1IlDTPlAJ37oUDgPIabCWbZqMZr-86mnUDK_JPBA/exec?action=getPedidos&sucursal=${encodeURIComponent(sucursal)}&estados=pendiente,en preparacion`;
 
+  const restauranteActual = (localStorage.getItem('restaurante') || 'Soru').toString().toLowerCase();
+
   fetch(url)
     .then(res => res.json())
     .then(data => {
@@ -1612,7 +1625,10 @@ function renderPedidosListo() {
     console.warn("No existe el grid o empty state de pedidos listos");
     return;
   }
-  fetch('/api/pedidos.json')
+
+  const restauranteActual = localStorage.getItem('restaurante') || 'Soru';
+
+  fetch(`/api/pedidos.json?restaurante=${encodeURIComponent(restauranteActual)}`)
     .then(res => res.json())
     .then(pedidos => {
       const pedidosListos = pedidos.filter(p => (p.estado || '').toLowerCase() === 'listo');
@@ -1941,9 +1957,6 @@ function renderEstadisticas(pedidos) {
 
     // Obtiene la fecha actual (local)
     const ahora = new Date();
-    // Para pruebas, puedes forzar la fecha:
-    // const ahora = new Date("2025-08-01T03:00:00");
-
     return (
       pedidoDateObj.getFullYear() === ahora.getFullYear() &&
       pedidoDateObj.getMonth() === ahora.getMonth() &&
@@ -1957,24 +1970,26 @@ function renderEstadisticas(pedidos) {
     return (estado === 'liberado' || estado === 'cancelado') && esMismoDia(p);
   });
 
-  const completados = relevantes.filter(p => (p.estado || p.Estado || '').toLowerCase() === 'liberado');
+  // Solo pedidos liberados para estadísticas de tiempo y pago
+  const soloLiberados = relevantes.filter(p => (p.estado || p.Estado || '').toLowerCase() === 'liberado');
   const cancelados = relevantes.filter(p => (p.estado || p.Estado || '').toLowerCase() === 'cancelado');
 
   const totalPedidos = relevantes.length;
-  const pedidosCompletads = completados.length;
+  const pedidosCompletads = soloLiberados.length;
   const pedidosCancelados = cancelados.length;
 
-  const tiempos = relevantes
+  // Solo tiempo de los liberados
+  const tiempos = soloLiberados
     .map(p => parseInt(p.tiempo || p.Tiempo))
     .filter(t => !isNaN(t));
   const promedioTiempo = tiempos.length > 0
     ? Math.round(tiempos.reduce((a, b) => a + b, 0) / tiempos.length)
     : 0;
 
-  // MÉTODOS DE PAGO SOLO EN RELEVANTES
-  const efectivo = relevantes.filter(p => ((p.pago || p.Pago || '').toLowerCase() === 'efectivo')).length;
-  const tarjetas = relevantes.filter(p => ((p.pago || p.Pago || '').toLowerCase() === 'tarjeta')).length;
-  const transferencias = relevantes.filter(p => ((p.pago || p.Pago || '').toLowerCase() === 'transferencia')).length;
+  // Métodos de pago solo en liberados
+  const efectivo = soloLiberados.filter(p => ((p.pago || p.Pago || '').toLowerCase() === 'efectivo')).length;
+  const tarjetas = soloLiberados.filter(p => ((p.pago || p.Pago || '').toLowerCase() === 'tarjeta')).length;
+  const transferencias = soloLiberados.filter(p => ((p.pago || p.Pago || '').toLowerCase() === 'transferencia')).length;
 
   document.getElementById("totalPedidos").textContent = totalPedidos;
   document.getElementById("completedPedidos").textContent = pedidosCompletads;

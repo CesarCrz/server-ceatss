@@ -30,11 +30,13 @@ function login() {
   params.append("action", "login");
   params.append("email", email);
   params.append("password", password);
+  params.append("restaurante", "Soru");
 
   console.log("📤 Enviando a Apps Script:", {
     action: "login",
     email: email,
-    password: "********" // ocultamos en consola por seguridad
+    password: "********", // ocultamos en consola por seguridad
+    restaurante: "Soru"
   });
 
   fetch("https://script.google.com/macros/s/AKfycbzhwNTB1cK11Y3Wm7uiuVrzNmu1HD1IlDTPlAJ37oUDgPIabCWbZqMZr-86mnUDK_JPBA/exec", {
@@ -54,14 +56,22 @@ function login() {
       localStorage.setItem("email", email);
       localStorage.setItem("rol", data.rol);
       localStorage.setItem("sucursal", data.sucursal);
+      localStorage.setItem("restaurante", data.restaurante || "Soru");
       localStorage.setItem('showWelcomeToast', 'true');
       console.log("✅ Login correcto, redirigiendo a main...");
+      console.log("Datos guardados:", {
+        email: email,
+        rol: data.rol,
+        sucursal: data.sucursal,
+        restaurante: data.restaurante
+      });
       window.location.href = "main";
     } else if (data.estado === "PASS_INVALIDA") {
       showLoginError("Contraseña incorrecta.");
     } else if (data.estado === "NO_EXISTE_USUARIO") {
       showLoginError("Usuario no encontrado.");
     } else {
+      console.error("❌ Respuesta inesperada:", data);
       showLoginError("Error desconocido. Por favor, intenta de nuevo.");
     }
   })

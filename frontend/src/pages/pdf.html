@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Reporte de Ventas - {{sucursal}}</title>
+<style>
+    body {
+        font-family: 'Segoe UI', Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #f4f6f8;
+        color: #333;
+        position: relative;
+    }
+
+    /* Marca de agua */
+    body::before {
+        content: "cEats";
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        font-size: 120px;
+        color: rgba(0,0,0,0.05);
+        transform: translate(-50%, -50%) rotate(-30deg);
+        z-index: 0;
+        white-space: nowrap;
+        pointer-events: none;
+    }
+
+    .container {
+        position: relative;
+        max-width: 800px;
+        margin: auto;
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        z-index: 1;
+    }
+
+    /* Encabezado */
+    .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 2px solid #eaecef;
+        padding-bottom: 15px;
+        margin-bottom: 20px;
+    }
+    .logo {
+        height: 50px;
+    }
+    .empresa {
+        font-size: 22px;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+
+    .meta {
+        text-align: center;
+        color: #7f8c8d;
+        margin-bottom: 20px;
+    }
+
+    /* Tarjetas de estadísticas */
+    .stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    .stat {
+        background: #f9fafb;
+        padding: 15px;
+        border-radius: 6px;
+        text-align: center;
+        border: 1px solid #eaecef;
+    }
+    .stat h3 {
+        font-size: 14px;
+        color: #888;
+        margin-bottom: 5px;
+    }
+    .stat p {
+        font-size: 20px;
+        font-weight: bold;
+        margin: 0;
+        color: #2c3e50;
+    }
+
+    /* Gráfica */
+    .chart-container {
+        margin-top: 20px;
+    }
+</style>
+</head>
+<body>
+    <div class="container">
+        <!-- Encabezado con logo -->
+        <div class="header">
+            <span class="empresa">Sushi Soru Restaurant - {{sucursal}}</span>
+            <img src="{{logoBase64}}" alt="Logo" class="logo">
+        </div>
+
+        <!-- Datos generales -->
+        <div class="meta">
+            <p><strong>Sucursal:</strong> {{sucursal}}</p>
+            <p><strong>Fecha:</strong> {{fecha}}</p>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="stats">
+            <div class="stat">
+                <h3>Pedidos Cancelados</h3>
+                <p>{{eliminados}}</p>
+            </div>
+            <div class="stat">
+                <h3>Pedidos Completados</h3>
+                <p>{{liberados}}</p>
+            </div>
+            <div class="stat">
+                <h3>Tiempo Promedio</h3>
+                <p>{{tiempoPromedio}} min</p>
+            </div>
+            <div class="stat">
+                <h3>Total Ventas</h3>
+                <p>${{total}}</p>
+            </div>
+            <div class="stat">
+                <h3>Efectivo</h3>
+                <p>${{efectivo}}</p>
+            </div>
+            <div class="stat">
+                <h3>Venta Sucursal</h3>
+                <p>${{ventaSucursal}}</p>
+            </div>
+            <div class="stat venta-tarjeta">
+                <h3>Venta Tarjeta</h3>
+                <p>${{tarjeta}}</p>
+            </div>
+        </div>
+
+        <!-- Gráfica -->
+        <div class="chart-container">
+            <canvas id="ventasChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const ctx = document.getElementById('ventasChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Efectivo', 'Tarjeta', 'Sucursal'],
+                datasets: [{
+                    label: 'Ventas ($)',
+                    data: [{{efectivo}}, {{tarjeta}}, {{ventaSucursal}}],
+                    backgroundColor: ['#27ae60', '#2980b9', '#8e44ad']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    </script>
+</body>
+</html>
