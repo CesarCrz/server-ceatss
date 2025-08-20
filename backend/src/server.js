@@ -517,7 +517,7 @@ app.post('/api/enviarCorte', async (req, res) => {
     // Logo en base64 (opcional)
     let logoDataURI = '';
     try {
-      const logoPath = path.join(__dirname, '../../frontend/src/Img/Logo_soru.png');
+      const logoPath = path.join(__dirname, '../../frontend/src/Img/Logo_Soru.png');
       if (fs.existsSync(logoPath)) {
         const logoBase64 = fs.readFileSync(logoPath, { encoding: 'base64' });
         logoDataURI = `data:image/png;base64,${logoBase64}`;
