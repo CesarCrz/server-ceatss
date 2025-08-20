@@ -551,7 +551,10 @@ app.post('/api/enviarCorte', async (req, res) => {
 
     // Genera el PDF con puppeteer
     const puppeteer = require('puppeteer');
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium-browser', // Ajusta según tu sistema
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
     const page = await browser.newPage();
     await page.setContent(htmlConDatos, { waitUntil: 'networkidle0' });
     const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
