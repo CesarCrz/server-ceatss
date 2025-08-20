@@ -11,6 +11,15 @@ COPY package*.json ./
 RUN corepack enable && corepack prepare pnpm@latest --activate \
     && npm cache clean --force && pnpm install --production --ignore-scripts
 
+#para instalar y configurar chromium
+RUN apk add --no-cache \
+  chromium \
+  nss \
+  freetype \
+  harfbuzz \
+  ca-certificates \
+  ttf-freefont
+
 # Copia el resto del código de la aplicación
 COPY . .
 
