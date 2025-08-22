@@ -205,11 +205,11 @@
                                 <button class="about-btn" id="manual-btn" title="Manual de Usuario">
                                     <i class="fa-solid fa-book"></i>
                                 </button>
+                                <button class="about-btn" id="soporte-btn" title="Soporte">
+                                    <i class="fa-solid fa-headset"></i>
+                                </button>
                                 <button class="about-btn" id="about-btn" title="Acerca de">
                                     <i class="fa-solid fa-circle-info"></i>
-                                </button>
-                                <button class="about-btn" id="about-btn" title="Soporte">
-                                    <i class="fa-solid fa-headset"></i>
                                 </button>
                             </div>
                             <!-- <button class="btn btn-primary save-config" id="saveSettingsBtn">
@@ -277,6 +277,41 @@
                 </button>
             </div>
         </div>  
+    </div>
+
+    <!-- Modal Soporte Mejorado -->
+    <div class="modal-overlay" id="soporteModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Soporte y Contacto</div>
+                <button class="modal-close" id="soporteClose">&times;</button>
+            </div>
+            <div class="modal-body soporte-body">
+                <h3>¿Necesitas ayuda?<br>
+                <span class="soporte-sub">Contáctanos:</span></h3>
+                <div class="soporte-contact-list">
+                    <div class="soporte-contact-item">
+                        <i class="fa-solid fa-envelope soporte-icon"></i>
+                        <span class="soporte-label">Correo General:</span>
+                        <a href="mailto:daghz.minia@gmail.com" class="soporte-link">daghz.minia@gmail.com</a>
+                    </div>
+                    <div class="soporte-contact-item">
+                        <i class="fa-brands fa-whatsapp soporte-icon"></i>
+                        <span class="soporte-label">WhatsApp:</span>
+                        <a href="https://wa.me/5213312345678" target="_blank" class="soporte-link">+52 33 1234 5678</a>
+                    </div>
+                    <div class="soporte-contact-item">
+                        <i class="fa-solid fa-toolbox soporte-icon"></i>
+                        <span class="soporte-label">Correo Técnico:</span>
+                        <a href="mailto:devsoru@gmail.com" class="soporte-link">devsoru@gmail.com</a>
+                    </div>
+                </div>
+                <div class="soporte-extra">
+                    <div><b>Horario de atención:</b> 9:00 am a 8:00 pm</div>
+                    <div><b>Respuesta estimada:</b> menos de 24hrs.</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="historial" class="tab-content">

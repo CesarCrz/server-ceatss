@@ -2263,5 +2263,28 @@ if (btnManualAdmin || btnManualSucursal) {
   });
 }
 
+// Soporte
+const popupSoporte = document.getElementById('soporteModal');
+
+document.getElementById('soporte-btn').addEventListener('click', function() {
+  document.getElementById('soporteModal').style.display = 'flex';
+});
+
+document.getElementById('soporteClose').addEventListener('click', function() {
+  document.getElementById('soporteModal').style.display = 'none';
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && popupSoporte.style.display === 'flex') {
+    popupSoporte.style.display = 'none';
+  }
+});
+
+popupSoporte.addEventListener('click', (e) => {
+  if (!popupCorte.contains(e.target)) {
+    popupSoporte.style.display = 'none';
+  }
+});
+
 // Ejemplo: Llama esta función cuando abras el panel admin o cada vez que quieras refrescar estadísticas
 // actualizarEstadisticasAdmin();
