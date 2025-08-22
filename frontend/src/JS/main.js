@@ -2245,7 +2245,7 @@ if (btnManualAdmin || btnManualSucursal) {
   // BOTON MANUAL SUCURSAL
   btnManualSucursal.addEventListener('click', () => {
     showToastTopRight({
-      message: 'Manual de usuario en construcción. ¡Pronto disponible!',
+      message: 'Manual de usuario en construcción. ¡Proximamente!',
       background: '#2563eb',
       color: '#fff',
       duration: 3500
@@ -2255,7 +2255,7 @@ if (btnManualAdmin || btnManualSucursal) {
   // BOTON MANUAL ADMIN
   btnManualAdmin.addEventListener('click', () => {
     showToastTopRight({
-      message: 'Manual de usuario en construcción. ¡Proximamente!',
+      message: 'Manual de usuario en construcción. Proximamente!',
       background: '#2563eb',
       color: '#fff',
       duration: 3500
