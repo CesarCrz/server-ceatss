@@ -23,6 +23,7 @@
                         <span id="sucursalHeader">Sucursal: ---</span>
                     </div>
                     <div class="user-controls">
+                        <i class="fa-solid fa-book manualUsuario" title="Manual de Usuario" style="font-size: 1.55rem; cursor: pointer; margin-right: 10px; display: none;" id="btnManualSucursales"></i>
                         <img id="iconoSonido" src="Img/bell_off.svg" alt="Sonido de pedidos" title="Activar sonido" style="width: 26px; height: 26px; cursor: pointer; margin-right: 10px;">
                         <div class="user-menu">
                             <button class="user-menu-btn" id="userMenuBtn">
@@ -200,9 +201,14 @@
                                 <i class="fas fa-lock"></i>
                                 Cambiar contraseña
                             </button>
-                            <button class="about-btn" id="about-btn" title="Acerca de">
-                                <i class="fa-solid fa-circle-info" style="color: #2858c8;"></i>
-                            </button>
+                            <div class="manual-about-buttons">
+                                <button class="about-btn" id="manual-btn" title="Manual de Usuario">
+                                    <i class="fa-solid fa-book"></i>
+                                </button>
+                                <button class="about-btn" id="about-btn" title="Acerca de">
+                                    <i class="fa-solid fa-circle-info"></i>
+                                </button>
+                            </div>
                             <!-- <button class="btn btn-primary save-config" id="saveSettingsBtn">
                                 <i class="fas fa-save"></i>
                                 <span>Guardar Configuración</span>
@@ -497,7 +503,7 @@
                 </ul>
                 <div style="margin-top:1em;">
                     <b>Desarrolladores:</b> Paulo Cruz, Daniel González<br>
-                    <b>Versión:</b> 1.1.0<br>
+                    <b>Versión:</b> <span style="letter-spacing: 1.5px;">1.1.2</span><br>
                     <b><span class="aboutSpan">MinIA</span> © 2025</b>
                 </div>
             </div>

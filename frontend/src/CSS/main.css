@@ -901,12 +901,17 @@ gap: 10px;
 
 /* Botón "Cambiar contraseña" diferente */
 .cambiar-password {
-    background-color: #406be0;
-    border: none;
+  background-color: #406be0;
+  border: none;
+  width: auto;
+  min-width: 0;
+  max-width: 320px;
+  display: inline-flex;
+  padding: 12px 32px;
 }
 
 .cambiar-password:hover {
-    background-color: #2e53cc;
+  background-color: #2e53cc;
 }
   
 /* Cancelación Modal */
@@ -2227,6 +2232,17 @@ gap: 10px;
   /* font-weight: bold; */
 }
 
+/* DELIVER REFERECIA */
+.popup-referencia {
+  margin-top: 10px;
+  font-size: 1em;
+  background: #004fc1;
+  border-radius: 5px;
+  padding: 8px 10px;
+  color: #fff;
+  /* font-weight: bold; */
+}
+
 /* POPUP CORTE DE CAJA */
 .popup-overlay-corte {
   display: none; /* oculto por defecto */
@@ -2338,10 +2354,20 @@ gap: 10px;
 }
 
 /* Boton acerca de */
-.about-btn {
+.manual-about-buttons {
   position: fixed;
-  right: 26px;
-  bottom: 26px;
+  right: 32px;
+  bottom: 32px;
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  z-index: 9999;
+  /* Si quieres que no se muestren en móviles, usa: 
+  @media (max-width: 600px) { display: none; }
+  */
+}
+
+.manual-about-buttons .about-btn {
   width: 46px;
   height: 46px;
   background: #fff;
@@ -2352,16 +2378,28 @@ gap: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 3000;
   font-size: 1.55rem;
   cursor: pointer;
-  transition: box-shadow 0.2s, transform 0.2s;
+  transition: box-shadow 0.35s, transform 0.35s;
+  margin: 0;
+  z-index: auto !important;
 }
 
-.about-btn:hover {
-  /* background: #2858c8; */
-  transform: scale(1.2);
+.manual-about-buttons .about-btn:hover {
+  transform: scale(1.1);
   color: #fff;
+  background: #2858c8;
+  box-shadow: 0 12px 28px rgba(40, 88, 200, 0.11);
+}
+
+.manualUsuario {
+  transition: all 0.35s;
+}
+
+.manualUsuario:hover {
+  transform: scale(1.1);
+  color: #fff;
+  background: #2858c8;
   box-shadow: 0 12px 28px rgba(40, 88, 200, 0.11);
 }
 

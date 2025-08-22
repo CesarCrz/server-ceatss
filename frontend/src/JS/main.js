@@ -913,6 +913,7 @@ function setupOrderDetailsListener() {
                   deliverTo: pedido.deliverTo || '',
                   celular: pedido.celular || pedido.numero,
                   domicilio: pedido.domicilio || pedido.address,
+                  referencia: pedido.referencia,
                   sucursal: pedido.sucursal,
                   metodoPago: pedido.metodoPago || pedido.payMethod,
                   total: pedido.total,
@@ -1084,6 +1085,15 @@ function mostrarPopupPedidoListo(pedido) {
     itemsContainer.appendChild(deliverToDiv);
   }
 
+  if (pedido.referencia) {
+    const refereciaDiv = document.createElement('div');
+    refereciaDiv.className = 'popup-referencia';
+    refereciaDiv.innerHTML = `
+      <b>Referencia de domicilio:</b> ${pedido.referencia || 'No especificado'}
+    `;
+    itemsContainer.appendChild(refereciaDiv);
+  }
+
   // Rellena totales
   let total = (typeof pedido.total === 'number')
     ? pedido.total
@@ -1180,6 +1190,7 @@ function mostrarPopupPedidoListo(pedido) {
           deliverTo: pedido.deliverTo || '',
           celular: pedido.celular || pedido.numero,
           domicilio: pedido.domicilio || pedido.address,
+          referencia: pedido.referencia,
           sucursal: pedido.sucursal,
           metodoPago: pedido.metodoPago || pedido.payMethod,
           total: pedido.total,
@@ -1388,6 +1399,16 @@ function mostrarPopupPedido(pedido) {
     comentariosDiv.className = 'popup-comentarios-pedido';
     comentariosDiv.innerHTML = `<b>Comentarios:</b> ${pedido.specs}`;
     itemsContainer.appendChild(comentariosDiv);
+  }
+
+
+  if (pedido.referencia) {
+    const refereciaDiv = document.createElement('div');
+    refereciaDiv.className = 'popup-referencia';
+    refereciaDiv.innerHTML = `
+      <b>Referencia de domicilio:</b> ${pedido.referencia || 'No especificado'}
+    `;
+    itemsContainer.appendChild(refereciaDiv);
   }
 
   // Calcular el total si no existe
@@ -2210,6 +2231,37 @@ modalAbout.addEventListener('click', (e) => {
   }
 });
 
+// Manual de usuario
+const btnManualSucursal = document.getElementById('btnManualSucursales');
+const btnManualAdmin = document.getElementById('manual-btn');
+const sucursal = localStorage.getItem('sucursal');
+
+if (sucursal === 'ITESO' || sucursal === 'TESORO') {
+  btnManualSucursal.style.display = 'flex';
+}
+
+if (btnManualAdmin || btnManualSucursal) {
+
+  // BOTON MANUAL SUCURSAL
+  btnManualSucursal.addEventListener('click', () => {
+    showToastTopRight({
+      message: 'Manual de usuario en construcción. ¡Pronto disponible!',
+      background: '#2563eb',
+      color: '#fff',
+      duration: 3500
+    })
+  });
+
+  // BOTON MANUAL ADMIN
+  btnManualAdmin.addEventListener('click', () => {
+    showToastTopRight({
+      message: 'Manual de usuario en construcción. ¡Pronto disponible!',
+      background: '#2563eb',
+      color: '#fff',
+      duration: 3500
+    })
+  });
+}
 
 // Ejemplo: Llama esta función cuando abras el panel admin o cada vez que quieras refrescar estadísticas
 // actualizarEstadisticasAdmin();

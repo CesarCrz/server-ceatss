@@ -21,6 +21,7 @@ function fillOrderData(orderData) {
   document.getElementById("sucursal").textContent = orderData.sucursal || "Sucursal desconocida";
   document.getElementById("orderId").textContent = orderData.codigo || orderData.orderId || orderData.idPedido || "—";
   document.getElementById("deliverTo").textContent = orderData.deliverTo || "—";
+  document.getElementById("referencia").textContent = orderData.referencia || "—";
 
   const fechaYhora = `${fecha} ${hora}`.trim();
   document.getElementById("orderDate").textContent = fechaYhora || "Fecha no disponible";
@@ -141,6 +142,7 @@ const exampleOrder = {
     numero: '5555-1234',
     deliverTo: 'Recoger',
     domicilio: 'Av. General Ramón Corona 2514, Zapopan, Jalisco',
+    referencia: 'Porton negro',
     sucursal: 'ITESO',
     metodoPago: 'Efectivo',
     total: '350.00',
