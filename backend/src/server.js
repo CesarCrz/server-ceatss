@@ -564,13 +564,13 @@ app.post('/api/enviarCorte', async (req, res) => {
     let transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'dannyglezhdzo@gmail.com', // Cambia por tu correo real
-        pass: 'jexh anjd wkqi znof'      // Contraseña de aplicación
+        user: 'ceats881@gmail.com', // Cambia por tu correo real
+        pass: 'cxck ndhm ywri oxvn'      // Contraseña de aplicación
       }
     });
 
     await transporter.sendMail({
-      from: 'Sushi Soru Restaurant <dannyglezhdzo@gmail.com>',
+      from: 'Sushi Soru Restaurant <ceats881@gmail.com>',
       to: correoDestinatario,
       subject: `Corte de caja - ${sucursal} - ${fechaMX}`,
       text: `Corte de caja generado por ${nombreDestinatario || correoDestinatario}`,
