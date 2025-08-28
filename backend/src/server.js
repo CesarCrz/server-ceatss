@@ -366,8 +366,8 @@ app.get('/api/corte', async (req, res) => {
   }
 
   try {
-    // Usa BACKTICKS aquí ⬇️
-    const url = `https://script.google.com/macros/s/AKfycbzhwNTB1cK11Y3Wm7uiuVrzNmu1HD1IlDTPlAJ37oUDgPIabCWbZqMZr-86mnUDK_JPBA/exec?action=getPedidos&sucursal=${encodeURIComponent(sucursal)}&estados=liberado`;
+    const restaurante = (req.query.restaurante || 'Soru');
+    const url = `https://script.google.com/macros/s/AKfycbzhwNTB1cK11Y3Wm7uiuVrzNmu1HD1IlDTPlAJ37oUDgPIabCWbZqMZr-86mnUDK_JPBA/exec?action=getPedidos&sucursal=${encodeURIComponent(sucursal)}&estados=liberado&restaurante=${encodeURIComponent(restaurante)}&pagado=si`;
     const response = await fetch(url);
     const data = await response.json();
     const pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
@@ -387,10 +387,16 @@ app.get('/api/corte', async (req, res) => {
       );
     }
 
+    // FILTRA SOLO los liberados y pagados=Si
     const pedidosDelDia = pedidos.filter(esMismoDia);
+    const pedidosCorte = pedidosDelDia.filter(p => {
+      const estado = (p.estado || '').toLowerCase();
+      let pagado = (p.Pagado ?? p.pagado ?? '').trim().toLowerCase();
+      return estado === 'liberado' && pagado === 'si';
+    });
 
     let efectivo = 0, tarjeta = 0, ventaSucursal = 0;
-    pedidosDelDia.forEach(p => {
+    pedidosCorte.forEach(p => {
       const pago = (p.pago || p.payMethod || p.metodoPago || '').toLowerCase();
       const totalPedido = parseFloat(p.total) || 0;
       if (pago === 'efectivo') efectivo += totalPedido;
@@ -411,9 +417,9 @@ app.get('/api/corte', async (req, res) => {
     });
   } catch (err) {
     console.error("Error en corte desde sheets:", err);
-    res.status(500).json({ error: 'Error al obtener el corte desde Sheets.' });
+    res.status(500).json({ error: 'Error al obtener el corte desde Sheets.' }); 
   }
-});
+});;
 
 app.post('/api/enviarCorte', async (req, res) => {
   try {
@@ -432,49 +438,49 @@ app.post('/api/enviarCorte', async (req, res) => {
 
     // 2. Filtra por fecha de hoy (formato dd/mm/yyyy)
     function esMismoDia(pedido) {
-    const fechaRaw = pedido.fecha || pedido.Fecha || pedido.date || pedido.Date;
-    if (!fechaRaw) return false;
+      const fechaRaw = pedido.fecha || pedido.Fecha || pedido.date || pedido.Date;
+      if (!fechaRaw) return false;
 
-    // Si la fecha viene como ISO (incluye "T")
-    if (fechaRaw.includes('T')) {
-      const utcDate = new Date(fechaRaw);
-      const mxDateStr = utcDate.toLocaleString('en-US', { timeZone: 'America/Mexico_City' });
-      const mxDate = new Date(mxDateStr);
-      const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
-      return (
-        mxDate.getFullYear() === ahora.getFullYear() &&
-        mxDate.getMonth() === ahora.getMonth() &&
-        mxDate.getDate() === ahora.getDate()
-      );
+      // Si la fecha viene como ISO (incluye "T")
+      if (fechaRaw.includes('T')) {
+        const utcDate = new Date(fechaRaw);
+        const mxDateStr = utcDate.toLocaleString('en-US', { timeZone: 'America/Mexico_City' });
+        const mxDate = new Date(mxDateStr);
+        const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
+        return (
+          mxDate.getFullYear() === ahora.getFullYear() &&
+          mxDate.getMonth() === ahora.getMonth() &&
+          mxDate.getDate() === ahora.getDate()
+        );
+      }
+
+      // Si la fecha viene como dd/mm/yyyy
+      if (/^\d{2}\/\d{2}\/\d{4}/.test(fechaRaw)) {
+        const soloFecha = fechaRaw.split(' ')[0];
+        const [dia, mes, anio] = soloFecha.split('/');
+        const pedidoDateObj = new Date(`${anio}-${mes}-${dia}`);
+        if (isNaN(pedidoDateObj)) return false;
+        const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
+        return (
+          pedidoDateObj.getFullYear() === ahora.getFullYear() &&
+          pedidoDateObj.getMonth() === ahora.getMonth() &&
+          pedidoDateObj.getDate() === ahora.getDate()
+        );
+      }
+
+      // Si la fecha viene como yyyy-mm-dd
+      if (/^\d{4}-\d{2}-\d{2}/.test(fechaRaw)) {
+        const pedidoDateObj = new Date(fechaRaw);
+        const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
+        return (
+          pedidoDateObj.getFullYear() === ahora.getFullYear() &&
+          pedidoDateObj.getMonth() === ahora.getMonth() &&
+          pedidoDateObj.getDate() === ahora.getDate()
+        );
+      }
+
+      return false;
     }
-
-    // Si la fecha viene como dd/mm/yyyy
-    if (/^\d{2}\/\d{2}\/\d{4}/.test(fechaRaw)) {
-      const soloFecha = fechaRaw.split(' ')[0];
-      const [dia, mes, anio] = soloFecha.split('/');
-      const pedidoDateObj = new Date(`${anio}-${mes}-${dia}`);
-      if (isNaN(pedidoDateObj)) return false;
-      const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
-      return (
-        pedidoDateObj.getFullYear() === ahora.getFullYear() &&
-        pedidoDateObj.getMonth() === ahora.getMonth() &&
-        pedidoDateObj.getDate() === ahora.getDate()
-      );
-    }
-
-    // Si la fecha viene como yyyy-mm-dd
-    if (/^\d{4}-\d{2}-\d{2}/.test(fechaRaw)) {
-      const pedidoDateObj = new Date(fechaRaw);
-      const ahora = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' }));
-      return (
-        pedidoDateObj.getFullYear() === ahora.getFullYear() &&
-        pedidoDateObj.getMonth() === ahora.getMonth() &&
-        pedidoDateObj.getDate() === ahora.getDate()
-      );
-    }
-
-    return false;
-  }
 
     const pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
     const pedidosDelDia = pedidos.filter(esMismoDia);
@@ -549,10 +555,29 @@ app.post('/api/enviarCorte', async (req, res) => {
       logoBase64: logoDataURI
     });
 
+    // --- ARREGLO PUPPETEER INICIO ---
+    // Detecta ruta de Chrome/Chromium en Linux y Windows
+    const chromePaths = [
+      process.env.CHROMIUM_PATH,
+      '/usr/bin/chromium-browser',
+      '/usr/bin/chromium',
+      '/usr/bin/google-chrome',
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
+    ];
+    function findChromePath() {
+      for (const p of chromePaths) {
+        if (p && fs.existsSync(p)) return p;
+      }
+      return undefined;
+    }
+    const chromePath = findChromePath();
+    // --- ARREGLO PUPPETEER FIN ---
+
     // Genera el PDF con puppeteer
     const puppeteer = require('puppeteer');
     const browser = await puppeteer.launch({
-      executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium-browser', // Ajusta según tu sistema
+      executablePath: chromePath, // Si no existe, Puppeteer usará su Chromium
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     const page = await browser.newPage();

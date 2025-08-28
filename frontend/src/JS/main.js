@@ -1854,6 +1854,11 @@ function renderHistorialPedidos(pedidos) {
     pedidos.forEach(p => {
       let estadoLower = (p.estado || "").toLowerCase();
       let colorClass = estadoLower === "cancelado" ? "historial-cancelado" : "historial-liberado";
+
+      let pagado = p.Pagado ?? p.pagado ?? 'No';
+      pagado = typeof pagado === 'string' ? pagado.trim().toLowerCase() : '';
+      let pagadoTexto = pagado === 'si' ? 'Si' : 'No';
+
       const card = document.createElement("div");
       card.className = `order-card ${colorClass}`;
       card.setAttribute('data-codigo', p.codigo || p.orderId);
@@ -1862,6 +1867,7 @@ function renderHistorialPedidos(pedidos) {
         <div class="pedido-header">
           <div class="pedido-codigo">${p.codigo}</div>
           <div class="pedido-nombre">${p.nombre}</div>
+          <div class="pedido-pagado">Pagado: <span font-weight: "bold";>${pagadoTexto}</spam></div>
         </div>
         <div class="pedido-footer">
           <span class="estado-badge ${estadoLower}">${p.estado}</span>
@@ -2285,6 +2291,302 @@ popupSoporte.addEventListener('click', (e) => {
     popupSoporte.style.display = 'none';
   }
 });
+
+// POPUP PEDIDOS NO PAGADOS
+const btnPagarPedido = document.getElementById('pagarPedido');
+const btnCerrarPagar = document.getElementById('cerrarPopupPagosLiberados');
+const popupPagarPedido = document.getElementById('popupPagosLiberados');
+const modalContentPagos = document.querySelector('.modal-pagos');
+
+btnPagarPedido.addEventListener('click', ()  => {
+  popupPagarPedido.style.display = 'flex';
+  // NUEVO: Llama a Google Sheets para obtener pedidos liberados
+  cargarPedidosLiberadosGS();
+  document.getElementById('listaPedidosLiberados').style.display = 'block';
+});
+
+btnCerrarPagar.addEventListener('click', () => {
+  popupPagarPedido.style.display = 'none';
+  document.getElementById('formularioPagoLiberados').style.display = 'none';
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && popupPagarPedido.style.display === 'flex') {
+    popupPagarPedido.style.display = 'none';
+    document.getElementById('formularioPagoLiberados').style.display = 'none';
+  }
+});
+
+popupPagarPedido.addEventListener('click', (e) => {
+  if (!modalContentPagos.contains(e.target)) {
+    popupPagarPedido.style.display = 'none';
+    document.getElementById('formularioPagoLiberados').style.display = 'none';
+  }
+});
+
+function renderListaPagosLiberados(pedidos) {
+  const lista = document.getElementById('listaPedidosLiberados');
+  const pNoPedidos = document.getElementById('noPedidos');
+  
+  // Elimina todos los hijos excepto el <p id="noPedidos">
+  Array.from(lista.children).forEach(child => {
+    if (!(child.id === 'noPedidos')) {
+      child.remove();
+    }
+  });
+
+  if (pedidos.length === 0) {
+    // Mostrar el mensaje
+    if (pNoPedidos) pNoPedidos.style.display = 'block';
+  } else {
+    // Ocultar el mensaje
+    if (pNoPedidos) pNoPedidos.style.display = 'none';
+    pedidos.forEach((pedido) => {
+      // Crea el div principal del item
+      const item = document.createElement('div');
+      item.className = 'pedido-liberado-item';
+
+      // Info del pedido
+      const info = document.createElement('div');
+      info.className = 'pedido-liberado-info';
+      info.innerHTML = `
+        <span class="codigo-pedido"><a href="#" style="color:#3772ff;text-decoration:none;font-weight:bold;">#${pedido.codigo}</a></span>
+        <span class="cliente-pedido">${pedido.cliente}</span>
+        <span class="total-pedido">$${pedido.total.toFixed(2)}</span>
+        <span class="badge-metodo badge-${pedido.metodo}">${pedido.metodo.charAt(0).toUpperCase() + pedido.metodo.slice(1) || 'No especificado'}</span>
+        <span class="sucursal-pedido">${pedido.sucursal || 'No especificado'}</span>
+      `;
+
+      // Botón de pago
+      const btn = document.createElement('button');
+      btn.className = 'btn-registrar-pago';
+      btn.setAttribute('data-codigo', pedido.codigo);
+      btn.textContent = 'Registrar Pago';
+
+      // Listener para mostrar formulario
+      btn.onclick = function() {
+        mostrarFormularioPagoLiberado(pedido);
+      };
+
+      // Añadir al item
+      item.appendChild(info);
+      item.appendChild(btn);
+
+      // Añadir al contenedor
+      lista.appendChild(item);
+    });
+  }
+}
+
+function calcularPropina() {
+  let montoInput = document.getElementById('montoPagadoLiberado').value;
+  montoInput = montoInput.replace('$', '').replace(',', '').trim();
+
+  let propinaInput = document.getElementById('propinaLiberado').value;
+  propinaInput = propinaInput.replace('$', '').replace(',', '').trim();
+
+  const totalDisplay = document.getElementById('TotalPagadoLiberado');
+
+  const monto = parseFloat(montoInput) || 0;
+  const propina = parseFloat(propinaInput) || 0;
+
+  const total = monto + propina;
+  totalDisplay.value = `$${total.toFixed(2)}`;
+
+  return total;
+}
+
+function calcularCambio() {
+  // Obtén el valor actual del campo, no recalcules propina
+  const totalConPropinaInput = document.getElementById('TotalPagadoLiberado').value;
+  const ingresoDineroInput = document.getElementById('ingreoPagadoLiberado').value;
+  const cambioInput = document.getElementById('cambioPagadoLiberado');
+  const metodoPago = document.getElementById('metodoPagoLiberado').value;
+
+  // Convierte el total a número eliminando el símbolo $
+  const totalConPropina = parseFloat(totalConPropinaInput.replace('$', '').replace(',', '').trim()) || 0;
+
+  if (metodoPago.toLowerCase() === 'efectivo') {
+    if (ingresoDineroInput === '') {
+        cambioInput.value = '$0.00';
+        return;
+    }
+
+    // Evita negativos en el input
+    if (parseFloat(ingresoDineroInput) < 0) {
+      document.getElementById('ingreoPagadoLiberado').value = '';
+      cambioInput.value = '$0.00';
+      showToastTopRight({
+        message: 'El ingreso de dinero no puede ser negativo.',
+        background: '#ef4444',
+        color: '#fff',
+        duration: 4000
+      });
+      return;
+    }
+
+    let totalCambio = parseFloat(ingresoDineroInput) - totalConPropina;
+
+    // Si el cambio es negativo, pon $0.00
+    if (totalCambio < 0) {
+      cambioInput.value = '$0.00';
+    } else {
+      cambioInput.value = `$${totalCambio.toFixed(2)}`;
+    }
+  } else if (metodoPago.toLowerCase() === 'tarjeta') {
+    cambioInput.value = '$0.00';
+  }
+}
+
+document.getElementById('montoPagadoLiberado').addEventListener('input', calcularPropina);
+document.getElementById('propinaLiberado').addEventListener('input', calcularPropina);
+
+document.getElementById('ingreoPagadoLiberado').addEventListener('input', calcularCambio);
+document.getElementById('cambioPagadoLiberado').addEventListener('input', calcularCambio);
+
+const btnRegistrarPago = document.getElementById('registrarPagoLiberado');
+btnRegistrarPago.addEventListener('click', function() {
+  const selectMetodoPago = document.getElementById('metodoPagoLiberado').value;
+  const metodoPago = document.getElementById('metodoPagoLiberado').value.toLowerCase();
+  const totalConPropina = document.getElementById('TotalPagadoLiberado').value;
+  const ingresoDinero = document.getElementById('ingreoPagadoLiberado').value;
+  const estadoPagado = document.getElementById('estadoPagado');
+  estadoPagado.textContent = '';
+
+  // Limpia el símbolo $
+  const totalConPropinaNum = parseFloat(totalConPropina.replace('$', '').replace(',', '').trim()) || 0;
+  const ingresoDineroNum = parseFloat(ingresoDinero) || 0;
+
+  if (metodoPago === 'tarjeta' && totalConPropinaNum !== ingresoDineroNum) {
+    showToastTopRight({
+      message: 'El monto total debe de coincidir con el ingreso de dinero.',
+      background: '#ef4444',
+      color: '#fff',
+      duration: 4000
+    });
+    return;
+  }
+
+  if (metodoPago === 'efectivo' && ingresoDineroNum  < totalConPropinaNum) {
+    showToastTopRight({
+      message: 'El ingreso de dinero no puede ser menor al total con propina.',
+      background: '#ef4444',
+      color: '#fff',
+      duration: 4000
+    });
+    return;
+  }
+
+  const codigoPedido = document.getElementById('basicosPedidoLiberado').textContent.split('•')[0].replace('#','').trim();
+  const restaurante = localStorage.getItem('restaurante') || 'Pizza';
+
+  estadoPagado.textContent = 'Registrando pago...';
+  estadoPagado.style.color = 'var(--primary)';
+
+  fetch('https://script.google.com/macros/s/AKfycbzhwNTB1cK11Y3Wm7uiuVrzNmu1HD1IlDTPlAJ37oUDgPIabCWbZqMZr-86mnUDK_JPBA/exec', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: `action=marcarPedidoPagado&codigo=${encodeURIComponent(codigoPedido)}&restaurante=${encodeURIComponent(restaurante)}`
+  })
+  .then(res => res.json())
+  .then(data => {
+    console.log("Respuesta de pago:", data);
+    if (data.estado === 'PAGADO_OK') {
+      showToastTopRight({
+        message: 'Pago registrado correctamente.',
+        background: '#16a34a',
+        color: '#fff',
+        duration: 4000
+      });
+      cargarPedidosLiberadosGS();
+      ingresoDinero.value = '';
+      estadoPagado.textContent = '';
+      document.getElementById('formularioPagoLiberados').style.display = 'none';
+      document.getElementById('listaPedidosLiberados').style.display = 'block';
+    } else {
+      showToastTopRight({
+        message: 'Error al registrar el pago (Sheets).',
+        background: '#ef4444',
+        color: '#fff',
+        duration: 4000
+      });
+    }
+  })
+});
+
+function mostrarFormularioPagoLiberado(pedido) {
+  document.getElementById('listaPedidosLiberados').style.display = 'none';
+  document.getElementById('formularioPagoLiberados').style.display = 'block';
+
+  // Rellena el formulario con datos del pedido
+  document.getElementById('basicosPedidoLiberado').textContent = `#${pedido.codigo} • ${pedido.cliente} • ${pedido.sucursal}`;
+  document.getElementById('montoPagadoLiberado').value = `$${pedido.total.toFixed(2)}`;
+  document.getElementById('propinaLiberado').value = '$0.00';
+  document.getElementById('TotalPagadoLiberado').value = '$' + pedido.total.toFixed(2);
+
+  if (pedido.metodo === 'efectivo') {
+    document.getElementById('metodoPagoLiberado').value = 'Efectivo';
+  } else if (pedido.metodo === 'tarjeta') {
+    document.getElementById('metodoPagoLiberado').value = 'Tarjeta';
+  }
+  
+  // LIMPIAR EL CAMPO DE INGRESO DE DINERO Y CAMBIO
+  document.getElementById('ingreoPagadoLiberado').value = '';
+  document.getElementById('cambioPagadoLiberado').value = '$0.00';
+  // Si tienes mensajes de estado, también puedes limpiar:
+  const estadoPagado = document.getElementById('estadoPagado');
+  if (estadoPagado) estadoPagado.textContent = '';
+}
+
+// Botón cancelar del formulario
+document.getElementById('cancelarPagoLiberado').onclick = function() {
+  let montoInput = document.getElementById('montoPagadoLiberado');
+  let propinaInput = document.getElementById('propinaLiberado');
+  let totalDisplay = document.getElementById('TotalPagadoLiberado');
+  let ingresoInput = document.getElementById('ingreoPagadoLiberado');
+  let cambioInput = document.getElementById('cambioPagadoLiberado');
+  
+  // Limpiar los valores
+  montoInput.value = '';
+  propinaInput.value = '';
+  totalDisplay.value = '$0.00';
+  ingresoInput.value = '';
+  cambioInput.value = '$0.00';
+  
+  document.getElementById('formularioPagoLiberados').style.display = 'none';
+  document.getElementById('listaPedidosLiberados').style.display = 'block';
+};
+
+function cargarPedidosLiberadosGS() {
+  const sucursal = localStorage.getItem('sucursal');
+  const restaurante = localStorage.getItem('restaurante') || 'Pizza';
+  const url = `https://script.google.com/macros/s/AKfycbzhwNTB1cK11Y3Wm7uiuVrzNmu1HD1IlDTPlAJ37oUDgPIabCWbZqMZr-86mnUDK_JPBA/exec?action=getPedidos&sucursal=${encodeURIComponent(sucursal)}&estados=liberado&restaurante=${encodeURIComponent(restaurante)}`;
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+      let pedidosLiberados = [];
+      if (data.estado === "OK" && Array.isArray(data.pedidos)) {
+        // FILTRA SOLO LOS NO PAGADOS (soporta "Pagado", "pagado", etc)
+        pedidosLiberados = data.pedidos.filter(p => {
+          // Detecta el campo correctamente
+          let pagado = p.Pagado ?? p.pagado ?? p.pagado ?? "";
+          pagado = typeof pagado === "string" ? pagado.trim().toLowerCase() : "";
+          return pagado !== "si";
+        }).map(p => ({
+          codigo: p.codigo,
+          cliente: p.nombre,
+          total: parseFloat(p.total) || 0,
+          metodo: (p.payMethod || p.pago || '').toLowerCase() || 'efectivo',
+          sucursal: p.sucursal || 'No especificado'
+        }));
+      }
+      renderListaPagosLiberados(pedidosLiberados);
+    })
+    .catch(err => {
+      console.error("Error al cargar pedidos liberados de GS:", err);
+      renderListaPagosLiberados([]); // Muestra vacío
+    });
+}
 
 // Ejemplo: Llama esta función cuando abras el panel admin o cada vez que quieras refrescar estadísticas
 // actualizarEstadisticasAdmin();
